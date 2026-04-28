@@ -8,6 +8,27 @@ st.write("Calcula si tus precios cubren materiales, tiempo, desplazamientos y ga
 
 st.divider()
 
+# 🌍 MONEDA
+currency_options = {
+    "Euro (€)": "€",
+    "Dólar ($)": "$",
+    "Libra (£)": "£",
+    "Peso mexicano (MXN $)": "MXN $",
+    "Peso colombiano (COP $)": "COP $",
+    "Peso chileno (CLP $)": "CLP $",
+    "Peso dominicano (RD$)": "RD$",
+}
+
+currency_label = st.selectbox(
+    "🌍 Elige la moneda",
+    list(currency_options.keys()),
+    key="currency"
+)
+
+currency_symbol = currency_options[currency_label]
+
+st.divider()
+
 # 🔒 ACCESO PRO SIMPLE
 PRO_CODE = "NJA-8472"
 
@@ -16,7 +37,7 @@ is_pro_user = pro_access_input == PRO_CODE
 
 
 def money(x):
-    return f"{x:.2f} €"
+    return f"{currency_symbol}{x:.2f}"
 
 
 def diagnosis(profit_hour, desired_hour):
@@ -103,7 +124,7 @@ if mode == "💗 Rápido":
     )
 
     price = st.number_input(
-        "¿Cuánto cobras en promedio por clienta? (€)",
+        f"¿Cuánto cobras en promedio por clienta? ({currency_symbol})",
         0, 500, 0, step=1, key="r_price"
     )
 
@@ -120,22 +141,22 @@ if mode == "💗 Rápido":
     service_time = time_options[time_label]
 
     desired_hour = st.number_input(
-        "¿Qué referencia quieres usar para valorar tu tiempo? (€ por hora)",
+        f"¿Qué referencia quieres usar para valorar tu tiempo? ({currency_symbol} por hora)",
         0, 100, 0, step=1, key="r_hour",
-        help="Si estás empezando y no sabes qué poner, prueba varios escenarios: 5 €, 8 €, 10 €, 12 € y 15 € por hora."
+        help="Si estás empezando y no sabes qué poner, prueba varios escenarios: 5, 8, 10, 12 y 15 por hora."
     )
 
     if desired_hour > 0:
         st.caption(hourly_reference_text(desired_hour))
 
     materials = st.number_input(
-        "¿Cuánto gastas en materiales al mes? (€)",
+        f"¿Cuánto gastas en materiales al mes? ({currency_symbol})",
         0, 5000, 0, step=5, key="r_mat",
         help="Incluye gel, tips, limas, algodón, alcohol, cleanser, guantes, decoración, packaging, etc."
     )
 
     other_expenses = st.number_input(
-        "Otros gastos mensuales del negocio (€)",
+        f"Otros gastos mensuales del negocio ({currency_symbol})",
         0, 5000, 0, step=5, key="r_exp",
         help="Ejemplo: luz, internet, publicidad, cursos, apps, teléfono, limpieza, reposición general, etc."
     )
@@ -161,7 +182,7 @@ if mode == "💗 Rápido":
 
     if place in ["Salón alquilando silla/mesa", "Local propio"]:
         rent = st.number_input(
-            "¿Cuánto pagas al mes por alquiler/silla/local? (€)",
+            f"¿Cuánto pagas al mes por alquiler/silla/local? ({currency_symbol})",
             0, 10000, 0, step=10, key="r_rent"
         )
 
@@ -169,7 +190,7 @@ if mode == "💗 Rápido":
         st.subheader("Coste de trabajar a domicilio")
 
         travel_month = st.number_input(
-            "¿Cuánto gastas al mes en gasolina/transporte/desplazamiento? (€)",
+            f"¿Cuánto gastas al mes en gasolina/transporte/desplazamiento? ({currency_symbol})",
             0, 2000, 0, step=5, key="r_travel_month",
             help="Pon 0 si vas caminando o no tienes gasto. Incluye gasolina, parking, bus, taxi o transporte."
         )
@@ -253,7 +274,7 @@ if mode == "💗 Rápido":
         st.write(f"💸 **Gastos totales:** {money(total_cost)}")
         st.write(f"✅ **Ganancia real:** {money(profit)}")
         st.write(f"⏱️ **Horas trabajadas al mes:** {total_hours:.1f} horas")
-        st.write(f"💵 **Ganancia real por hora:** {profit_hour:.2f} €/h")
+        st.write(f"💵 **Ganancia real por hora:** {money(profit_hour)}/h")
 
         st.divider()
 
@@ -380,7 +401,7 @@ elif mode == "💎 Pro":
         )
 
         s["price"] = st.number_input(
-            "¿Cuánto cobras por este servicio? (€)",
+            f"¿Cuánto cobras por este servicio? ({currency_symbol})",
             0, 1000, value=s["price"], step=1, key=f"pro_price_{i}"
         )
 
@@ -392,7 +413,7 @@ elif mode == "💎 Pro":
         )
 
         s["material"] = st.number_input(
-            "Material que gastas en ESTE servicio por cada clienta (€)",
+            f"Material que gastas en ESTE servicio por cada clienta ({currency_symbol})",
             0, 500, value=s["material"], step=1, key=f"pro_mat_{i}",
             help="Incluye gel, tips, limas, algodón, alcohol, decoración, packaging, etc."
         )
@@ -416,16 +437,16 @@ elif mode == "💎 Pro":
     st.header("Gastos del negocio")
 
     desired_hour = st.number_input(
-        "¿Qué referencia quieres usar para valorar tu tiempo? (€ por hora)",
+        f"¿Qué referencia quieres usar para valorar tu tiempo? ({currency_symbol} por hora)",
         0, 100, 0, step=1, key="pro_hour",
-        help="Si estás empezando y no sabes qué poner, prueba varios escenarios: 5 €, 8 €, 10 €, 12 € y 15 € por hora."
+        help="Si estás empezando y no sabes qué poner, prueba varios escenarios: 5, 8, 10, 12 y 15 por hora."
     )
 
     if desired_hour > 0:
         st.caption(hourly_reference_text(desired_hour))
 
     other_expenses = st.number_input(
-        "Otros gastos mensuales del negocio (€)",
+        f"Otros gastos mensuales del negocio ({currency_symbol})",
         0, 20000, 0, step=5, key="pro_exp",
         help="Ejemplo: luz, internet, publicidad, cursos, apps, teléfono, limpieza, reposición general, etc."
     )
@@ -449,7 +470,7 @@ elif mode == "💎 Pro":
 
     if place in ["Salón alquilando silla/mesa", "Local propio"]:
         rent = st.number_input(
-            "¿Cuánto pagas al mes por alquiler/silla/local? (€)",
+            f"¿Cuánto pagas al mes por alquiler/silla/local? ({currency_symbol})",
             0, 20000, 0, step=10, key="pro_rent"
         )
 
@@ -457,7 +478,7 @@ elif mode == "💎 Pro":
         st.subheader("Coste de trabajar a domicilio")
 
         travel_month = st.number_input(
-            "¿Cuánto gastas al mes en gasolina/transporte/desplazamiento? (€)",
+            f"¿Cuánto gastas al mes en gasolina/transporte/desplazamiento? ({currency_symbol})",
             0, 5000, 0, step=5, key="pro_travel_month",
             help="Pon 0 si vas caminando o no tienes gasto. Incluye gasolina, parking o transporte."
         )
@@ -470,7 +491,7 @@ elif mode == "💎 Pro":
         travel_time = travel_time_options[travel_time_label]
 
     tools = st.number_input(
-        "Herramientas o equipos que quieres recuperar (€)",
+        f"Herramientas o equipos que quieres recuperar ({currency_symbol})",
         0, 20000, 0, step=10, key="pro_tools",
         help="Ejemplo: torno, lámpara, brocas, mesa, silla, aspirador, esterilizador. NO incluyas productos que se gastan en cada servicio."
     )
@@ -635,7 +656,7 @@ elif mode == "💎 Pro":
             )
 
             st.write(f"Ganancia antes de valorar tu tiempo: **{money(real_profit_per_service)}**")
-            st.write(f"Ganancia aproximada por hora en este servicio: **{real_profit_per_hour:.2f} €/h**")
+            st.write(f"Ganancia aproximada por hora en este servicio: **{money(real_profit_per_hour)}/h**")
 
             if r["price"] < min_s:
                 st.error(
@@ -664,7 +685,7 @@ elif mode == "💎 Pro":
         st.write(f"💸 **Gastos totales:** {money(total_expenses)}")
         st.write(f"✅ **Ganancia real aproximada:** {money(profit)}")
         st.write(f"⏱️ **Horas trabajadas al mes:** {total_hours:.1f} horas")
-        st.write(f"💵 **Ganancia real por hora:** {profit_hour:.2f} €/h")
+        st.write(f"💵 **Ganancia real por hora:** {money(profit_hour)}/h")
 
         st.divider()
 
