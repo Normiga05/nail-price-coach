@@ -55,6 +55,12 @@ TEXT = {
         "warn_travel_time_client": "Selecciona el tiempo extra de desplazamiento por clienta.",
         "warn_travel_time_service": "Selecciona el tiempo extra de desplazamiento por servicio.",
         "quick_result": "📊 Resultado rápido",
+        "free_result_note": "El modo gratuito te da una orientación general. Para ver precios recomendados exactos, análisis por servicio y qué está bajando tu rentabilidad, desbloquea PRO.",
+        "free_locked_prices": "🔒 Estás a 1 paso de saber cuánto deberías cobrar realmente. Para ver tu precio mínimo sostenible, precio ideal, precio premium y análisis completo, desbloquea el modo PRO.",
+        "free_pro_cta": "💎 En PRO puedes analizar cada servicio, ver precios exactos recomendados y detectar qué servicio está bajando tu rentabilidad.",
+        "free_pain": "⚠️ Puedes estar perdiendo dinero sin darte cuenta si no sabes qué servicio te deja menos margen.",
+        "unlock_pro_button": "💎 Desbloquear PRO",
+        "unlock_pro_message": "👉 Compra el acceso PRO en el link de mi perfil y vuelve aquí para introducir tu código.",
         "income_month": "💰 **Ingreso mensual:**",
         "materials_month_result": "🧴 **Materiales del mes:**",
         "other_expenses_result": "🏠 **Otros gastos:**",
@@ -209,6 +215,12 @@ TEXT = {
         "warn_travel_time_client": "Select the extra travel time per client.",
         "warn_travel_time_service": "Select the extra travel time per service.",
         "quick_result": "📊 Quick result",
+        "free_result_note": "Free mode gives you a general orientation. To see exact recommended prices, service analysis, and what may be lowering your profitability, unlock PRO.",
+        "free_locked_prices": "🔒 You are 1 step away from knowing what you should really charge. To see your minimum sustainable price, ideal price, premium price, and full analysis, unlock PRO mode.",
+        "free_pro_cta": "💎 In PRO you can analyze each service, see exact recommended prices, and detect which service is lowering your profitability.",
+        "free_pain": "⚠️ You may be losing money without realizing it if you do not know which service leaves you with the lowest margin.",
+        "unlock_pro_button": "💎 Unlock PRO",
+        "unlock_pro_message": "👉 Buy PRO access through the link in my profile and come back here to enter your code.",
         "income_month": "💰 **Monthly income:**",
         "materials_month_result": "🧴 **Monthly materials:**",
         "other_expenses_result": "🏠 **Other expenses:**",
@@ -631,83 +643,24 @@ if mode == t("quick_mode"):
 
         st.subheader(t("quick_result"))
 
+        st.info(t("free_result_note"))
         st.write(diagnosis(profit_hour, desired_hour))
 
         st.write(f"{t('income_month')} {money(income)}")
-        st.write(f"{t('materials_month_result')} {money(materials)}")
-        st.write(f"{t('other_expenses_result')} {money(other_expenses)}")
-
-        if rent > 0:
-            st.write(f"{t('rent_result')} {money(rent)}")
-
-        if travel_month > 0:
-            st.write(f"{t('travel_result')} {money(travel_month)}")
-
-        if commission_value > 0:
-            st.write(f"{t('commission_result')} {money(commission_value)}")
-
         st.write(f"{t('total_costs')} {money(total_cost)}")
         st.write(f"{t('real_profit')} {money(profit)}")
         st.write(f"{t('hours_month')} {total_hours:.1f} {t('hours')}")
-        st.write(f"{t('profit_hour')} {money(profit_hour)}/h")
 
         st.divider()
 
-        st.subheader(t("recommended_avg_price"))
+        st.warning(t("free_locked_prices"))
+        st.error(t("free_pain"))
+        st.info(t("free_pro_cta"))
 
-        st.write(f"{t('material_per_client')} **{money(material_per_client)}**")
-        st.write(f"{t('fixed_per_client')} **{money(fixed_cost_per_client)}**")
-
-        if place == t("mobile"):
-            st.write(f"{t('extra_travel_per_client')} **{travel_time:.1f} h**")
-
-        st.write(f"{t('time_value_client')} **{money(time_value)}**")
-
-        if commission > 0:
-            st.write(f"{t('commission_adjustment')} **{commission}%**")
-
-        st.write(f"{t('min_sustainable')} **{money(min_price)}**")
-        st.write(f"{t('ideal_recommended')} **{money(ideal_price)}**")
-        st.write(f"{t('premium_guide')} **{money(max_price)}**")
-
-        st.caption(t("range_caption"))
-
-        st.info(t("market_info"))
+        if st.button(t("unlock_pro_button"), key="unlock_pro_from_free"):
+            st.success(t("unlock_pro_message"))
 
         st.caption(t("market_caption"))
-
-        if calculated_minimum <= price:
-            st.success(t("current_covers"))
-        else:
-            st.warning(
-                f"{t('below_minimum')} **{money(recommended)}**."
-            )
-
-        st.divider()
-
-        st.subheader(t("simple_interpretation"))
-
-        if profit < 0:
-            st.error(t("losing_money_simple"))
-        elif profit_hour < desired_hour:
-            st.warning(t("below_hour_simple"))
-        else:
-            st.success(t("good_numbers_simple"))
-
-        if place == t("home"):
-            st.info(t("home_info"))
-
-        elif place == t("mobile"):
-            st.info(t("mobile_info"))
-
-        elif place == t("salon_commission"):
-            st.info(t("commission_info"))
-
-        elif place == t("salon_rent"):
-            st.info(t("chair_info"))
-
-        elif place == t("own_place"):
-            st.info(t("own_place_info"))
 
 
 # ===============================
@@ -1115,3 +1068,4 @@ elif mode == t("pro_mode"):
         st.info(t("final_market_info"))
 
         st.caption(t("market_caption"))
+
