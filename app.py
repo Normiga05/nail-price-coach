@@ -179,6 +179,11 @@ TEXT = {
         "assistant_no_key": "⚠️ El asistente todavía no está configurado. Falta la clave de la IA (OPENAI_API_KEY) en la configuración de la app.",
         "assistant_error": "Hubo un problema al conectar con el asistente. Intenta de nuevo en un momento.",
         "assistant_thinking": "Pensando...",
+        "assistant_examples_label": "💡 No sabes qué preguntar? Prueba con esto:",
+        "assistant_example_1": "¿Qué le digo a una clienta que dice que está muy caro?",
+        "assistant_example_2": "¿Cómo subo mis precios sin perder clientas?",
+        "assistant_example_3": "Se me fue una clienta sin avisar, ¿qué hago?",
+        "assistant_example_4": "Dame ideas para armar un combo rentable",
     },
     "English": {
         "title": "💅 By Norja - Nail Price Coach",
@@ -347,6 +352,11 @@ TEXT = {
         "assistant_no_key": "⚠️ The assistant is not configured yet. The AI key (OPENAI_API_KEY) is missing from the app configuration.",
         "assistant_error": "There was a problem connecting to the assistant. Please try again in a moment.",
         "assistant_thinking": "Thinking...",
+        "assistant_examples_label": "💡 Not sure what to ask? Try one of these:",
+        "assistant_example_1": "What do I say to a client who thinks it's too expensive?",
+        "assistant_example_2": "How do I raise my prices without losing clients?",
+        "assistant_example_3": "A client no-showed without any notice, what do I do?",
+        "assistant_example_4": "Give me ideas for a profitable combo package",
     }
 }
 
@@ -1203,11 +1213,30 @@ elif mode == t("assistant_mode"):
     if "assistant_messages" not in st.session_state:
         st.session_state.assistant_messages = []
 
+    example_clicked = None
+
+    if not st.session_state.assistant_messages:
+        st.caption(t("assistant_examples_label"))
+
+        example_questions = [
+            t("assistant_example_1"),
+            t("assistant_example_2"),
+            t("assistant_example_3"),
+            t("assistant_example_4"),
+        ]
+
+        example_cols = st.columns(2)
+
+        for i, example in enumerate(example_questions):
+            if example_cols[i % 2].button(example, key=f"assistant_example_{i}"):
+                example_clicked = example
+
     for msg in st.session_state.assistant_messages:
         with st.chat_message(msg["role"]):
             st.markdown(escape_markdown_dollars(msg["content"]))
 
-    user_question = st.chat_input(t("assistant_placeholder"))
+    typed_question = st.chat_input(t("assistant_placeholder"))
+    user_question = example_clicked or typed_question
 
     if user_question:
         st.session_state.assistant_messages.append({"role": "user", "content": user_question})
