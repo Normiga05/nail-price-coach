@@ -392,10 +392,13 @@ st.write(t("subtitle"))
 st.divider()
 
 # 🔒 ACCESO PRO SIMPLE
-PRO_CODE = st.secrets.get("PRO_CODE", "NJA-8472")
+PRO_CODES = st.secrets.get("PRO_CODES", ["NJA-8472"])
+
+if isinstance(PRO_CODES, str):
+    PRO_CODES = [code.strip() for code in PRO_CODES.split(",") if code.strip()]
 
 pro_access_input = st.text_input(t("pro_access"), type="password")
-is_pro_user = pro_access_input == PRO_CODE
+is_pro_user = pro_access_input.strip() in PRO_CODES
 
 
 def money(x):
