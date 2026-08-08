@@ -1,5 +1,6 @@
 import streamlit as st
 import math
+import requests
 from openai import OpenAI
 
 st.set_page_config(page_title="By Norja - Nail Price Coach", page_icon="💅")
@@ -392,10 +393,28 @@ st.write(t("subtitle"))
 st.divider()
 
 # 🔒 ACCESO PRO SIMPLE
+
+@st.cache_data(ttl=60)
+def fetch_dynamic_codes(sheet_csv_url):
+    if not sheet_csv_url:
+        return []
+
+    try:
+        response = requests.get(sheet_csv_url, timeout=5)
+        response.raise_for_status()
+        lines = response.text.strip().splitlines()
+        return [line.strip().strip('"') for line in lines[1:] if line.strip()]
+    except Exception:
+        return []
+
+
 PRO_CODES = st.secrets.get("PRO_CODES", ["NJA-8472"])
 
 if isinstance(PRO_CODES, str):
     PRO_CODES = [code.strip() for code in PRO_CODES.split(",") if code.strip()]
+
+CODES_SHEET_URL = st.secrets.get("CODES_SHEET_URL", "")
+PRO_CODES = PRO_CODES + fetch_dynamic_codes(CODES_SHEET_URL)
 
 pro_access_input = st.text_input(t("pro_access"), type="password")
 is_pro_user = pro_access_input.strip() in PRO_CODES
