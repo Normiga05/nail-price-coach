@@ -392,7 +392,7 @@ st.write(t("subtitle"))
 st.divider()
 
 # 🔒 ACCESO PRO SIMPLE
-PRO_CODE = "NJA-8472"
+PRO_CODE = st.secrets.get("PRO_CODE", "NJA-8472")
 
 pro_access_input = st.text_input(t("pro_access"), type="password")
 is_pro_user = pro_access_input == PRO_CODE
@@ -473,7 +473,8 @@ def get_openai_client():
 
 
 def ask_assistant(client, history):
-    messages = [{"role": "system", "content": get_assistant_system_prompt()}] + history
+    recent_history = history[-10:]
+    messages = [{"role": "system", "content": get_assistant_system_prompt()}] + recent_history
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
