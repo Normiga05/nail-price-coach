@@ -475,9 +475,12 @@ def get_assistant_system_prompt():
             "say to a client, a specific example (with made-up but realistic numbers to illustrate the idea), "
             "or a concrete step-by-step action. Never answer with a vague generic list of categories like "
             "'consider materials, time, expenses' — the user already has a calculator for that in this app. "
-            "If they ask you to calculate their exact prices or costs, tell them briefly to use the app's "
-            "calculator (Quick or Pro mode) instead of trying to do the math yourself, then still give them "
-            "one useful tactical tip related to what they asked. Ask a short follow-up question if you need "
+            "Never do numeric price or cost calculations yourself, even if the user gives you their exact "
+            "numbers (materials, time, expenses) and asks you to compute it — that is exactly what this "
+            "app's calculator (Quick or Pro mode) already does, and it is a paid feature. If asked to "
+            "calculate, say in one line that they should enter those numbers in the app's calculator instead, "
+            "then give one useful tactical tip related to what they asked (for example how to present or "
+            "justify that price to a client), not the calculation. Ask a short follow-up question if you need "
             "one detail to make your answer specific instead of generic. Keep answers short (3-6 sentences or "
             "a tight list), in a warm but professional tone."
         )
@@ -491,11 +494,14 @@ def get_assistant_system_prompt():
         "decirle a una clienta, un ejemplo concreto (con números inventados pero realistas para ilustrar la "
         "idea), o un paso a paso accionable. Nunca respondas con una lista genérica de categorías tipo "
         "'considera materiales, tiempo, gastos' — eso ya lo tiene resuelto con la calculadora de esta misma "
-        "app. Si te piden que calcules sus precios o costos exactos, diles en una línea que usen la "
-        "calculadora de la app (modo Rápido o Pro) en vez de intentar hacerlo tú, y de todas formas dales un "
-        "consejo táctico útil relacionado con lo que preguntaron. Haz una pregunta corta de seguimiento si te "
-        "falta un dato para dar una respuesta específica en vez de genérica. Respuestas cortas (3-6 frases o "
-        "una lista breve), con tono cercano pero profesional."
+        "app. Nunca hagas cálculos numéricos de precios o costos tú mismo, aunque la persona te dé sus números "
+        "exactos (materiales, tiempo, gastos) y te pida que se lo calcules — eso es justo lo que ya hace la "
+        "calculadora de esta app (modo Rápido o Pro), y es una función de pago. Si te piden que calcules, diles "
+        "en una línea que metan esos números en la calculadora de la app en vez de hacerlo tú, y dales un "
+        "consejo táctico útil relacionado con lo que preguntaron (por ejemplo cómo presentar o justificar ese "
+        "precio ante una clienta), no el cálculo. Haz una pregunta corta de seguimiento si te falta un dato "
+        "para dar una respuesta específica en vez de genérica. Respuestas cortas (3-6 frases o una lista "
+        "breve), con tono cercano pero profesional."
     )
 
 
@@ -506,6 +512,10 @@ def get_openai_client():
         return None
 
     return OpenAI(api_key=api_key)
+
+
+def escape_markdown_dollars(text):
+    return text.replace("$", "\\$")
 
 
 def ask_assistant(client, history):
@@ -1195,7 +1205,7 @@ elif mode == t("assistant_mode"):
 
     for msg in st.session_state.assistant_messages:
         with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+            st.markdown(escape_markdown_dollars(msg["content"]))
 
     user_question = st.chat_input(t("assistant_placeholder"))
 
@@ -1213,7 +1223,7 @@ elif mode == t("assistant_mode"):
                     answer = None
 
             if answer:
-                st.markdown(answer)
+                st.markdown(escape_markdown_dollars(answer))
             else:
                 st.error(t("assistant_error"))
 
