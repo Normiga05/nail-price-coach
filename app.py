@@ -1,5 +1,6 @@
 import streamlit as st
 import math
+from openai import OpenAI
 
 st.set_page_config(page_title="By Norja - Nail Price Coach", page_icon="💅")
 
@@ -169,6 +170,14 @@ TEXT = {
         "hour_prudent": "Es una referencia prudente para empezar, pero revisa si realmente compensa tu tiempo.",
         "hour_sustainable": "Es una referencia más sostenible si quieres que el trabajo tenga sentido como negocio.",
         "hour_premium": "Estás usando una referencia más profesional/premium. El precio debe acompañarse con buen acabado, fotos, atención y presentación.",
+        "assistant_mode": "🤖 Asistente",
+        "assistant_header": "🤖 Asistente de negocio para nail techs",
+        "assistant_info": "Pregúntale lo que quieras sobre tu negocio: cómo subir precios sin perder clientas, qué decir ante un no-show, cómo armar combos rentables, cómo responder objeciones de precio o cómo fidelizar clientas.",
+        "assistant_placeholder": "Escribe tu pregunta sobre tu negocio...",
+        "assistant_disclaimer": "Este asistente da consejos generales de negocio. No sustituye asesoría legal, fiscal o contable.",
+        "assistant_no_key": "⚠️ El asistente todavía no está configurado. Falta la clave de la IA (OPENAI_API_KEY) en la configuración de la app.",
+        "assistant_error": "Hubo un problema al conectar con el asistente. Intenta de nuevo en un momento.",
+        "assistant_thinking": "Pensando...",
     },
     "English": {
         "title": "💅 By Norja - Nail Price Coach",
@@ -329,6 +338,14 @@ TEXT = {
         "hour_prudent": "This is a cautious reference to start, but check whether it really compensates your time.",
         "hour_sustainable": "This is a more sustainable reference if you want the work to make sense as a business.",
         "hour_premium": "You are using a more professional/premium reference. The price should be supported by good finish, photos, attention, and presentation.",
+        "assistant_mode": "🤖 Assistant",
+        "assistant_header": "🤖 Business assistant for nail techs",
+        "assistant_info": "Ask anything about your business: how to raise prices without losing clients, what to say about a no-show, how to build profitable combos, how to handle price objections, or how to retain clients.",
+        "assistant_placeholder": "Type your business question...",
+        "assistant_disclaimer": "This assistant gives general business advice. It does not replace legal, tax, or accounting guidance.",
+        "assistant_no_key": "⚠️ The assistant is not configured yet. The AI key (OPENAI_API_KEY) is missing from the app configuration.",
+        "assistant_error": "There was a problem connecting to the assistant. Please try again in a moment.",
+        "assistant_thinking": "Thinking...",
     }
 }
 
@@ -425,6 +442,49 @@ def hourly_reference_text(hour):
     return t("hour_premium")
 
 
+def get_assistant_system_prompt():
+    if language == "English":
+        return (
+            "You are a practical business coach for independent nail technicians and small nail salons. "
+            "You help with pricing conversations, handling no-shows, building profitable combos and packages, "
+            "responding to price objections, client retention, dealing with difficult clients, and simple "
+            "day-to-day marketing ideas. Give short, direct, practical answers in a warm but professional tone. "
+            "Do not invent local market prices; if asked for exact prices, remind the user to use the price "
+            "calculator in this app instead."
+        )
+
+    return (
+        "Eres un coach de negocio práctico para manicuristas y nail techs independientes. Ayudas con: cómo "
+        "hablar de precios, qué decir ante un no-show, cómo armar combos y paquetes rentables, cómo responder "
+        "objeciones de precio, cómo fidelizar clientas, cómo manejar clientas difíciles y estrategias simples "
+        "de marketing para el día a día. Da respuestas cortas, directas y prácticas, con un tono cercano pero "
+        "profesional. No inventes precios de mercado local; si te piden precios exactos, recuérdales usar la "
+        "calculadora de precios de esta app."
+    )
+
+
+def get_openai_client():
+    api_key = st.secrets.get("OPENAI_API_KEY")
+
+    if not api_key:
+        return None
+
+    return OpenAI(api_key=api_key)
+
+
+def ask_assistant(client, history):
+    messages = [{"role": "system", "content": get_assistant_system_prompt()}] + history
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        max_tokens=500,
+        temperature=0.6,
+    )
+
+    return response.choices[0].message.content
+
+
 def get_time_options():
     if language == "English":
         return {
@@ -497,7 +557,7 @@ place_options = [
     t("own_place"),
 ]
 
-mode = st.radio(t("mode_question"), [t("quick_mode"), t("pro_mode")], key="mode")
+mode = st.radio(t("mode_question"), [t("quick_mode"), t("pro_mode"), t("assistant_mode")], key="mode")
 
 st.divider()
 
@@ -1068,4 +1128,58 @@ elif mode == t("pro_mode"):
         st.info(t("final_market_info"))
 
         st.caption(t("market_caption"))
+
+
+# ===============================
+# 🤖 MODO ASISTENTE
+# ===============================
+
+elif mode == t("assistant_mode"):
+
+    if not is_pro_user:
+        st.warning(t("pro_locked"))
+
+        st.info(t("pro_buy_info"))
+
+        st.stop()
+
+    st.header(t("assistant_header"))
+    st.info(t("assistant_info"))
+    st.caption(t("assistant_disclaimer"))
+
+    client = get_openai_client()
+
+    if client is None:
+        st.error(t("assistant_no_key"))
+        st.stop()
+
+    if "assistant_messages" not in st.session_state:
+        st.session_state.assistant_messages = []
+
+    for msg in st.session_state.assistant_messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    user_question = st.chat_input(t("assistant_placeholder"))
+
+    if user_question:
+        st.session_state.assistant_messages.append({"role": "user", "content": user_question})
+
+        with st.chat_message("user"):
+            st.markdown(user_question)
+
+        with st.chat_message("assistant"):
+            with st.spinner(t("assistant_thinking")):
+                try:
+                    answer = ask_assistant(client, st.session_state.assistant_messages)
+                except Exception:
+                    answer = None
+
+            if answer:
+                st.markdown(answer)
+            else:
+                st.error(t("assistant_error"))
+
+        if answer:
+            st.session_state.assistant_messages.append({"role": "assistant", "content": answer})
 
