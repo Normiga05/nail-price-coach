@@ -1,5 +1,6 @@
 import streamlit as st
 import math
+import requests
 from openai import OpenAI
 
 st.set_page_config(page_title="By Norja - Nail Price Coach", page_icon="💅")
@@ -178,6 +179,11 @@ TEXT = {
         "assistant_no_key": "⚠️ El asistente todavía no está configurado. Falta la clave de la IA (OPENAI_API_KEY) en la configuración de la app.",
         "assistant_error": "Hubo un problema al conectar con el asistente. Intenta de nuevo en un momento.",
         "assistant_thinking": "Pensando...",
+        "assistant_examples_label": "💡 No sabes qué preguntar? Prueba con esto:",
+        "assistant_example_1": "¿Qué le digo a una clienta que dice que está muy caro?",
+        "assistant_example_2": "¿Cómo subo mis precios sin perder clientas?",
+        "assistant_example_3": "Se me fue una clienta sin avisar, ¿qué hago?",
+        "assistant_example_4": "Dame ideas para armar un combo rentable",
     },
     "English": {
         "title": "💅 By Norja - Nail Price Coach",
@@ -346,6 +352,11 @@ TEXT = {
         "assistant_no_key": "⚠️ The assistant is not configured yet. The AI key (OPENAI_API_KEY) is missing from the app configuration.",
         "assistant_error": "There was a problem connecting to the assistant. Please try again in a moment.",
         "assistant_thinking": "Thinking...",
+        "assistant_examples_label": "💡 Not sure what to ask? Try one of these:",
+        "assistant_example_1": "What do I say to a client who thinks it's too expensive?",
+        "assistant_example_2": "How do I raise my prices without losing clients?",
+        "assistant_example_3": "A client no-showed without any notice, what do I do?",
+        "assistant_example_4": "Give me ideas for a profitable combo package",
     }
 }
 
@@ -392,10 +403,31 @@ st.write(t("subtitle"))
 st.divider()
 
 # 🔒 ACCESO PRO SIMPLE
-PRO_CODE = st.secrets.get("PRO_CODE", "NJA-8472")
+
+@st.cache_data(ttl=60)
+def fetch_dynamic_codes(sheet_csv_url):
+    if not sheet_csv_url:
+        return []
+
+    try:
+        response = requests.get(sheet_csv_url, timeout=5)
+        response.raise_for_status()
+        lines = response.text.strip().splitlines()
+        return [line.strip().strip('"') for line in lines[1:] if line.strip()]
+    except Exception:
+        return []
+
+
+PRO_CODES = st.secrets.get("PRO_CODES", ["NJA-8472"])
+
+if isinstance(PRO_CODES, str):
+    PRO_CODES = [code.strip() for code in PRO_CODES.split(",") if code.strip()]
+
+CODES_SHEET_URL = st.secrets.get("CODES_SHEET_URL", "")
+PRO_CODES = PRO_CODES + fetch_dynamic_codes(CODES_SHEET_URL)
 
 pro_access_input = st.text_input(t("pro_access"), type="password")
-is_pro_user = pro_access_input == PRO_CODE
+is_pro_user = pro_access_input.strip() in PRO_CODES
 
 
 def money(x):
@@ -448,18 +480,38 @@ def get_assistant_system_prompt():
             "You are a practical business coach for independent nail technicians and small nail salons. "
             "You help with pricing conversations, handling no-shows, building profitable combos and packages, "
             "responding to price objections, client retention, dealing with difficult clients, and simple "
-            "day-to-day marketing ideas. Give short, direct, practical answers in a warm but professional tone. "
-            "Do not invent local market prices; if asked for exact prices, remind the user to use the price "
-            "calculator in this app instead."
+            "day-to-day marketing ideas.\n\n"
+            "Always answer with something the user can use immediately: an exact script or phrase they can "
+            "say to a client, a specific example (with made-up but realistic numbers to illustrate the idea), "
+            "or a concrete step-by-step action. Never answer with a vague generic list of categories like "
+            "'consider materials, time, expenses' — the user already has a calculator for that in this app. "
+            "Never do numeric price or cost calculations yourself, even if the user gives you their exact "
+            "numbers (materials, time, expenses) and asks you to compute it — that is exactly what this "
+            "app's calculator (Quick or Pro mode) already does, and it is a paid feature. If asked to "
+            "calculate, say in one line that they should enter those numbers in the app's calculator instead, "
+            "then give one useful tactical tip related to what they asked (for example how to present or "
+            "justify that price to a client), not the calculation. Ask a short follow-up question if you need "
+            "one detail to make your answer specific instead of generic. Keep answers short (3-6 sentences or "
+            "a tight list), in a warm but professional tone."
         )
 
     return (
         "Eres un coach de negocio práctico para manicuristas y nail techs independientes. Ayudas con: cómo "
         "hablar de precios, qué decir ante un no-show, cómo armar combos y paquetes rentables, cómo responder "
         "objeciones de precio, cómo fidelizar clientas, cómo manejar clientas difíciles y estrategias simples "
-        "de marketing para el día a día. Da respuestas cortas, directas y prácticas, con un tono cercano pero "
-        "profesional. No inventes precios de mercado local; si te piden precios exactos, recuérdales usar la "
-        "calculadora de precios de esta app."
+        "de marketing para el día a día.\n\n"
+        "Responde siempre con algo que la persona pueda usar de inmediato: una frase o guion exacto que pueda "
+        "decirle a una clienta, un ejemplo concreto (con números inventados pero realistas para ilustrar la "
+        "idea), o un paso a paso accionable. Nunca respondas con una lista genérica de categorías tipo "
+        "'considera materiales, tiempo, gastos' — eso ya lo tiene resuelto con la calculadora de esta misma "
+        "app. Nunca hagas cálculos numéricos de precios o costos tú mismo, aunque la persona te dé sus números "
+        "exactos (materiales, tiempo, gastos) y te pida que se lo calcules — eso es justo lo que ya hace la "
+        "calculadora de esta app (modo Rápido o Pro), y es una función de pago. Si te piden que calcules, diles "
+        "en una línea que metan esos números en la calculadora de la app en vez de hacerlo tú, y dales un "
+        "consejo táctico útil relacionado con lo que preguntaron (por ejemplo cómo presentar o justificar ese "
+        "precio ante una clienta), no el cálculo. Haz una pregunta corta de seguimiento si te falta un dato "
+        "para dar una respuesta específica en vez de genérica. Respuestas cortas (3-6 frases o una lista "
+        "breve), con tono cercano pero profesional."
     )
 
 
@@ -470,6 +522,10 @@ def get_openai_client():
         return None
 
     return OpenAI(api_key=api_key)
+
+
+def escape_markdown_dollars(text):
+    return text.replace("$", "\\$")
 
 
 def ask_assistant(client, history):
@@ -1157,11 +1213,30 @@ elif mode == t("assistant_mode"):
     if "assistant_messages" not in st.session_state:
         st.session_state.assistant_messages = []
 
+    example_clicked = None
+
+    if not st.session_state.assistant_messages:
+        st.caption(t("assistant_examples_label"))
+
+        example_questions = [
+            t("assistant_example_1"),
+            t("assistant_example_2"),
+            t("assistant_example_3"),
+            t("assistant_example_4"),
+        ]
+
+        example_cols = st.columns(2)
+
+        for i, example in enumerate(example_questions):
+            if example_cols[i % 2].button(example, key=f"assistant_example_{i}"):
+                example_clicked = example
+
     for msg in st.session_state.assistant_messages:
         with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+            st.markdown(escape_markdown_dollars(msg["content"]))
 
-    user_question = st.chat_input(t("assistant_placeholder"))
+    typed_question = st.chat_input(t("assistant_placeholder"))
+    user_question = example_clicked or typed_question
 
     if user_question:
         st.session_state.assistant_messages.append({"role": "user", "content": user_question})
@@ -1177,7 +1252,7 @@ elif mode == t("assistant_mode"):
                     answer = None
 
             if answer:
-                st.markdown(answer)
+                st.markdown(escape_markdown_dollars(answer))
             else:
                 st.error(t("assistant_error"))
 
