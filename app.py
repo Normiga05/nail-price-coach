@@ -184,6 +184,21 @@ TEXT = {
         "assistant_example_2": "¿Cómo subo mis precios sin perder clientas?",
         "assistant_example_3": "Se me fue una clienta sin avisar, ¿qué hago?",
         "assistant_example_4": "Dame ideas para armar un combo rentable",
+        "affiliate_mode": "🤝 Afiliados",
+        "affiliate_header": "🤝 ¿Querés ganar promocionando Nail Price Coach?",
+        "affiliate_info": "Ganás 50% de comisión por cada venta que generes. Preguntale lo que quieras a este asistente: cuánto se gana, cómo funciona, para quién es o cómo empezar.",
+        "affiliate_placeholder": "Escribe tu pregunta sobre el programa de afiliados...",
+        "affiliate_disclaimer": "Este asistente responde dudas sobre el programa de afiliados. La afiliación se hace directamente en Hotmart.",
+        "affiliate_no_key": "⚠️ El asistente todavía no está configurado. Falta la clave de la IA (OPENAI_API_KEY) en la configuración de la app.",
+        "affiliate_error": "Hubo un problema al conectar con el asistente. Intenta de nuevo en un momento.",
+        "affiliate_thinking": "Pensando...",
+        "affiliate_examples_label": "💡 No sabes qué preguntar? Prueba con esto:",
+        "affiliate_example_1": "¿Cuánto puedo ganar por cada venta?",
+        "affiliate_example_2": "¿Cómo me afilio y cuándo recibo el link?",
+        "affiliate_example_3": "¿A quién le puedo promocionar esto?",
+        "affiliate_example_4": "¿Qué materiales tengo para promocionar?",
+        "affiliate_cta_label": "👉 Sumate como afiliada/o (1 clic, gratis)",
+        "affiliate_cta_note": "Te lleva directo a Hotmart. La afiliación es instantánea, sin aprobación manual.",
     },
     "English": {
         "title": "💅 By Norja - Nail Price Coach",
@@ -357,6 +372,21 @@ TEXT = {
         "assistant_example_2": "How do I raise my prices without losing clients?",
         "assistant_example_3": "A client no-showed without any notice, what do I do?",
         "assistant_example_4": "Give me ideas for a profitable combo package",
+        "affiliate_mode": "🤝 Affiliates",
+        "affiliate_header": "🤝 Want to earn by promoting Nail Price Coach?",
+        "affiliate_info": "You earn 50% commission on every sale you generate. Ask this assistant anything: how much you can earn, how it works, who it's for, or how to get started.",
+        "affiliate_placeholder": "Type your question about the affiliate program...",
+        "affiliate_disclaimer": "This assistant answers questions about the affiliate program. Affiliation itself happens directly on Hotmart.",
+        "affiliate_no_key": "⚠️ The assistant is not configured yet. The AI key (OPENAI_API_KEY) is missing from the app configuration.",
+        "affiliate_error": "There was a problem connecting to the assistant. Please try again in a moment.",
+        "affiliate_thinking": "Thinking...",
+        "affiliate_examples_label": "💡 Not sure what to ask? Try one of these:",
+        "affiliate_example_1": "How much can I earn per sale?",
+        "affiliate_example_2": "How do I affiliate and when do I get my link?",
+        "affiliate_example_3": "Who can I promote this to?",
+        "affiliate_example_4": "What materials do I get to promote it?",
+        "affiliate_cta_label": "👉 Become an affiliate (1 click, free)",
+        "affiliate_cta_note": "Takes you straight to Hotmart. Affiliation is instant, no manual approval.",
     }
 }
 
@@ -515,6 +545,43 @@ def get_assistant_system_prompt():
     )
 
 
+AFFILIATE_LINK = "https://affiliate.hotmart.com/affiliate-recruiting/view/9183B107072700"
+
+
+def get_affiliate_assistant_system_prompt():
+    if language == "English":
+        return (
+            "You are the affiliate recruiter for 'By Norja - Nail Price Coach', a $24.99 digital pricing "
+            "calculator for independent nail technicians, sold on Hotmart. Your only job is to convince the "
+            "person you're talking to to become an affiliate and to answer their questions about the affiliate "
+            "program honestly and concretely. Facts you must use and never contradict: commission is 50% per "
+            "sale (roughly $11 after Hotmart's platform fee); anyone can join instantly with one click, no "
+            "approval needed; affiliates get a personal tracking link plus ready-to-use tweets and email "
+            "templates inside the program; the product has a free trial mode so people can try before buying, "
+            "which makes it easy to promote; the ideal audience is nail artists with an audience, beauty "
+            "micro-influencers, and nail/beauty communities. You do not sell the product itself and you do not "
+            "generate PRO access codes — those are for buyers, not affiliates. Never invent numbers, links, or "
+            "policies beyond what's stated here. When the person is ready or asks how to join, tell them to "
+            "click the affiliate button on this page — do not make up a different URL. Keep answers short (3-5 "
+            "sentences), warm, and concrete."
+        )
+
+    return (
+        "Sos la persona encargada de reclutar afiliados para 'By Norja - Nail Price Coach', una calculadora "
+        "digital de precios para nail techs independientes, de $24.99, vendida en Hotmart. Tu único trabajo es "
+        "convencer a quien te escribe de sumarse como afiliado/a y responder sus dudas sobre el programa de "
+        "forma honesta y concreta. Datos que tenés que usar y nunca contradecir: la comisión es 50% por venta "
+        "(unos $11 después de la comisión de Hotmart); cualquiera se suma al instante con un clic, sin "
+        "aprobación; los afiliados reciben un link personal de seguimiento más tweets y emails ya redactados "
+        "dentro del programa; el producto tiene un modo gratis de prueba, lo que hace fácil promocionarlo; el "
+        "público ideal son nail artists con audiencia, micro-influencers de belleza y comunidades de uñas. No "
+        "vendés el producto en sí ni generás códigos de acceso PRO — esos son para compradoras, no para "
+        "afiliados. Nunca inventes números, links o políticas que no estén acá. Cuando la persona esté lista o "
+        "pregunte cómo sumarse, decile que use el botón de afiliación de esta misma página — no inventes otra "
+        "URL. Respuestas cortas (3-5 frases), cercanas y concretas."
+    )
+
+
 def get_openai_client():
     api_key = st.secrets.get("OPENAI_API_KEY")
 
@@ -528,9 +595,9 @@ def escape_markdown_dollars(text):
     return text.replace("$", "\\$")
 
 
-def ask_assistant(client, history):
+def ask_assistant(client, history, system_prompt):
     recent_history = history[-10:]
-    messages = [{"role": "system", "content": get_assistant_system_prompt()}] + recent_history
+    messages = [{"role": "system", "content": system_prompt}] + recent_history
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -614,7 +681,11 @@ place_options = [
     t("own_place"),
 ]
 
-mode = st.radio(t("mode_question"), [t("quick_mode"), t("pro_mode"), t("assistant_mode")], key="mode")
+mode = st.radio(
+    t("mode_question"),
+    [t("quick_mode"), t("pro_mode"), t("assistant_mode"), t("affiliate_mode")],
+    key="mode"
+)
 
 st.divider()
 
@@ -1247,7 +1318,9 @@ elif mode == t("assistant_mode"):
         with st.chat_message("assistant"):
             with st.spinner(t("assistant_thinking")):
                 try:
-                    answer = ask_assistant(client, st.session_state.assistant_messages)
+                    answer = ask_assistant(
+                        client, st.session_state.assistant_messages, get_assistant_system_prompt()
+                    )
                 except Exception:
                     answer = None
 
@@ -1258,4 +1331,79 @@ elif mode == t("assistant_mode"):
 
         if answer:
             st.session_state.assistant_messages.append({"role": "assistant", "content": answer})
+
+
+# ===============================
+# 🤝 MODO AFILIADOS
+# ===============================
+
+elif mode == t("affiliate_mode"):
+
+    st.header(t("affiliate_header"))
+    st.info(t("affiliate_info"))
+    st.caption(t("affiliate_disclaimer"))
+
+    st.link_button(t("affiliate_cta_label"), AFFILIATE_LINK, type="primary")
+    st.caption(t("affiliate_cta_note"))
+
+    st.divider()
+
+    affiliate_client = get_openai_client()
+
+    if affiliate_client is None:
+        st.error(t("affiliate_no_key"))
+        st.stop()
+
+    if "affiliate_messages" not in st.session_state:
+        st.session_state.affiliate_messages = []
+
+    affiliate_example_clicked = None
+
+    if not st.session_state.affiliate_messages:
+        st.caption(t("affiliate_examples_label"))
+
+        affiliate_example_questions = [
+            t("affiliate_example_1"),
+            t("affiliate_example_2"),
+            t("affiliate_example_3"),
+            t("affiliate_example_4"),
+        ]
+
+        affiliate_example_cols = st.columns(2)
+
+        for i, example in enumerate(affiliate_example_questions):
+            if affiliate_example_cols[i % 2].button(example, key=f"affiliate_example_{i}"):
+                affiliate_example_clicked = example
+
+    for msg in st.session_state.affiliate_messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(escape_markdown_dollars(msg["content"]))
+
+    affiliate_typed_question = st.chat_input(t("affiliate_placeholder"))
+    affiliate_user_question = affiliate_example_clicked or affiliate_typed_question
+
+    if affiliate_user_question:
+        st.session_state.affiliate_messages.append({"role": "user", "content": affiliate_user_question})
+
+        with st.chat_message("user"):
+            st.markdown(affiliate_user_question)
+
+        with st.chat_message("assistant"):
+            with st.spinner(t("affiliate_thinking")):
+                try:
+                    affiliate_answer = ask_assistant(
+                        affiliate_client,
+                        st.session_state.affiliate_messages,
+                        get_affiliate_assistant_system_prompt()
+                    )
+                except Exception:
+                    affiliate_answer = None
+
+            if affiliate_answer:
+                st.markdown(escape_markdown_dollars(affiliate_answer))
+            else:
+                st.error(t("affiliate_error"))
+
+        if affiliate_answer:
+            st.session_state.affiliate_messages.append({"role": "assistant", "content": affiliate_answer})
 
