@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Consentimientos - Panel{% endblock %}
+{% block content %}
+  <h1>💅 Consentimientos informados</h1>
+  <p><a class="btn" href="/admin/new">+ Nuevo consentimiento</a></p>
+  <table>
+    <thead>
+      <tr><th>Paciente</th><th>Tratamiento</th><th>Canal</th><th>Estado</th><th>Creado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for r in requests %}
+      <tr>
+        <td>{{ r.patient.full_name }}</td>
+        <td>{{ r.template.treatment_name }}</td>
+        <td>{{ r.channel }}</td>
+        <td><span class="status status-{{ r.status }}">{{ r.status }}</span></td>
+        <td>{{ r.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+        <td>
+          {% if r.status == "signed" %}
+            <a href="/admin/download/{{ r.id }}">Descargar PDF</a>
+          {% else %}
+            <a href="/sign/{{ r.token }}" target="_blank">Ver enlace</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Todavía no hay consentimientos enviados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

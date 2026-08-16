@@ -1,3 +1,8 @@
 .streamlit/secrets.toml
 __pycache__/
 *.pyc
+
+# flowww-consent-bot
+flowww-consent-bot/.venv/
+flowww-consent-bot/data/
+flowww-consent-bot/.env

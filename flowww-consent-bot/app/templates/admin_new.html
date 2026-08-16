@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Nuevo consentimiento{% endblock %}
+{% block content %}
+  <h1>Nuevo consentimiento</h1>
+  <p><a href="/admin">&larr; Volver al listado</a></p>
+  <form class="stack" method="post" action="/admin/new">
+    <label>Nombre de la paciente</label>
+    <input type="text" name="full_name" required>
+
+    <label>Teléfono (con código de país, ej. +34600111222)</label>
+    <input type="text" name="phone" placeholder="+34600111222">
+
+    <label>Correo</label>
+    <input type="email" name="email" placeholder="paciente@correo.com">
+
+    <label>Tratamiento</label>
+    <select name="template_id" required>
+      {% for t in templates %}
+      <option value="{{ t.id }}">{{ t.treatment_name }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Canal de envío</label>
+    <select name="channel">
+      <option value="both">WhatsApp + Correo</option>
+      <option value="whatsapp">Solo WhatsApp</option>
+      <option value="email">Solo correo</option>
+    </select>
+
+    <p style="margin-top:20px;"><button class="btn" type="submit">Crear y enviar</button></p>
+  </form>
+{% endblock %}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}flowww Consent Bot{% endblock %}</title>
+  <style>
+    body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; background: #faf7fb; color: #2c2530; }
+    h1 { font-size: 1.4rem; }
+    a { color: #8a4baf; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5dbe9; font-size: 0.9rem; }
+    .btn { display: inline-block; background: #8a4baf; color: #fff; padding: 10px 16px; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; font-size: 1rem; }
+    .btn:hover { background: #713b91; }
+    .status { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+    .status-pending { background: #f0e0f5; }
+    .status-sent { background: #fff2cc; }
+    .status-signed { background: #d9f2df; }
+    form.stack label { display: block; margin-top: 12px; font-weight: 600; font-size: 0.9rem; }
+    form.stack input, form.stack select, form.stack textarea { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #d9c8e0; border-radius: 6px; box-sizing: border-box; }
+    .consent-text { white-space: pre-wrap; background: #fff; border: 1px solid #e5dbe9; padding: 16px; border-radius: 8px; font-size: 0.9rem; line-height: 1.5; }
+    canvas#signature-pad { border: 1px dashed #8a4baf; border-radius: 8px; width: 100%; height: 180px; touch-action: none; background: #fff; }
+  </style>
+</head>
+<body>
+  {% block content %}{% endblock %}
+</body>
+</html>

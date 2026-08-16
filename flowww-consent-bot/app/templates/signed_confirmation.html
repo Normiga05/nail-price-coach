@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Consentimiento firmado{% endblock %}
+{% block content %}
+  <h1>✅ Consentimiento firmado</h1>
+  <p>Gracias, {{ consent.signer_name }}. Tu consentimiento para <strong>{{ consent.template.treatment_name }}</strong> ha quedado registrado el {{ consent.signed_at.strftime("%d/%m/%Y %H:%M") }} UTC.</p>
+  <p>Ya puedes cerrar esta ventana.</p>
+{% endblock %}
