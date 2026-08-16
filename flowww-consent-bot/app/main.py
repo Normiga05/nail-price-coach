@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app import config, notifications, pdf
+from app.auth import require_admin
 from app.database import Base, SessionLocal, engine, get_db
 from app.models import ConsentRequest, ConsentTemplate, Patient
 
@@ -62,13 +63,13 @@ def root():
 
 
 @app.get("/admin")
-def admin_list(request: Request, db: Session = Depends(get_db)):
+def admin_list(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     requests_ = db.query(ConsentRequest).order_by(ConsentRequest.created_at.desc()).all()
     return templates.TemplateResponse(request, "admin_list.html", {"requests": requests_})
 
 
 @app.get("/admin/new")
-def admin_new_form(request: Request, db: Session = Depends(get_db)):
+def admin_new_form(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     template_options = db.query(ConsentTemplate).all()
     return templates.TemplateResponse(request, "admin_new.html", {"templates": template_options})
 
@@ -81,6 +82,7 @@ def admin_new_submit(
     template_id: int = Form(...),
     channel: str = Form("both"),
     db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
 ):
     patient = Patient(full_name=full_name, phone=phone or None, email=email or None)
     db.add(patient)
@@ -102,7 +104,7 @@ def admin_new_submit(
 
 
 @app.get("/admin/download/{request_id}")
-def admin_download(request_id: int, db: Session = Depends(get_db)):
+def admin_download(request_id: int, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     consent_request = db.query(ConsentRequest).get(request_id)
     if not consent_request or not consent_request.pdf_path:
         return RedirectResponse("/admin")

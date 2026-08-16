@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: flowww-consent-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: BASE_URL
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite:///./data/app.db
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+# Nota: el plan free de Render no soporta discos persistentes, así que la
+# base SQLite se reinicia en cada redeploy. Para producción real, usa un
+# plan con disco persistente o cambia DATABASE_URL a un Postgres gestionado.
