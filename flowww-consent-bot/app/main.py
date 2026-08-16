@@ -10,10 +10,13 @@ from app import config, notifications, pdf
 from app.auth import require_admin
 from app.database import Base, SessionLocal, engine, get_db
 from app.models import ConsentRequest, ConsentTemplate, Patient
+from app.reminders import start_scheduler
+from app.webhooks import router as webhooks_router
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="flowww Consent Bot")
+app.include_router(webhooks_router)
 templates = Jinja2Templates(directory=str(config.BASE_DIR / "app" / "templates"))
 app.mount("/static", StaticFiles(directory=str(config.BASE_DIR / "app" / "static")), name="static")
 
@@ -50,6 +53,16 @@ def seed_templates():
             db.commit()
     finally:
         db.close()
+
+
+@app.on_event("startup")
+def launch_reminder_scheduler():
+    app.state.scheduler = start_scheduler()
+
+
+@app.on_event("shutdown")
+def stop_reminder_scheduler():
+    app.state.scheduler.shutdown(wait=False)
 
 
 @app.get("/health")

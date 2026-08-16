@@ -38,6 +38,22 @@ class ConsentTemplate(Base):
     consent_requests = relationship("ConsentRequest", back_populates="template")
 
 
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    treatment_name = Column(String(200), nullable=False)
+    appointment_at = Column(DateTime, nullable=False)
+    external_id = Column(String(120), unique=True, nullable=True)  # id de la cita en flowww, evita duplicados
+    source = Column(String(20), default="webhook")  # webhook | manual
+
+    reminder_sent = Column(Integer, default=0)  # 0/1 como bandera simple
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    patient = relationship("Patient")
+
+
 class ConsentRequest(Base):
     __tablename__ = "consent_requests"
 

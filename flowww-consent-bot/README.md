@@ -4,10 +4,11 @@ Bot para que las pacientes de una clínica estética firmen el consentimiento
 informado de un tratamiento 100% online, sin papel, recibiendo el enlace de
 firma por WhatsApp y/o correo.
 
-Este proyecto es independiente de flowww: por ahora el staff de la clínica
-crea el consentimiento manualmente en el panel (paciente + tratamiento). Una
-integración directa con la API de flowww (requiere su plan "Legend") queda
-como fase futura, una vez la clínica confirme qué acceso tiene.
+Este proyecto es independiente de flowww. El staff puede crear un
+consentimiento a mano en el panel, y además ya existe un webhook
+(`/webhooks/flowww`) listo para recibir eventos automáticos de citas/
+tratamientos en cuanto flowww (o un puente vía Zapier/Make) confirme cómo
+entregar esos datos — ver "Automatización con flowww" más abajo.
 
 ## Flujo
 
@@ -56,6 +57,42 @@ solo en local) hace falta una URL pública:
    se reinicia en cada redeploy — bien para hacer una demo, no para
    producción real (ahí conviene Postgres, ver más abajo).
 
+## Automatización con flowww (webhook + recordatorios)
+
+Cuando se confirme el acceso a flowww (API/webhooks, o un puente vía
+Zapier/Make/correo), no hace falta programar nada nuevo: ya existe
+`POST /webhooks/flowww`, protegido con un secreto compartido
+(`WEBHOOK_SECRET` en `.env`, se manda en el header `X-Webhook-Secret`).
+
+Formato de payload esperado (ver `app/webhooks.py` para el detalle):
+
+```json
+{
+  "event": "appointment.created",
+  "external_id": "id-de-la-cita-en-flowww",
+  "patient": { "full_name": "...", "phone": "+34...", "email": "..." },
+  "treatment_name": "Depilación láser",
+  "appointment_at": "2026-08-20T10:00:00",
+  "channel": "both"
+}
+```
+
+Al recibir un evento:
+1. Busca o crea la paciente (por teléfono o correo, evita duplicados).
+2. Guarda la cita (deduplicada por `external_id`).
+3. Si `treatment_name` coincide con el nombre de una plantilla de
+   consentimiento existente, dispara el envío automáticamente por WhatsApp/
+   correo — sin que el staff tenga que hacer nada.
+4. Un job en segundo plano revisa cada 5 minutos las citas guardadas y manda
+   un **recordatorio automático** (`REMINDER_LEAD_HOURS` en `.env`, 24h por
+   defecto) antes de la hora de la cita, una sola vez por cita.
+
+Si flowww no expone webhooks pero sí manda un correo de confirmación al
+agendar/completar un tratamiento, la misma ruta sirve de destino para un
+lector de correos automático (ej. vía Mailgun/SendGrid inbound routing) que
+traduzca ese correo al formato de arriba — no requiere volver a tocar la
+lógica de negocio, solo ese primer parseo.
+
 ## Pendiente antes de producción
 
 - **Textos legales reales**: los dos tratamientos de ejemplo (`Depilación
@@ -76,5 +113,8 @@ solo en local) hace falta una URL pública:
   producción; si se deja vacío, la contraseña cambia cada vez que el
   servidor reinicia (solo pensado para pruebas).
 - **Integración con flowww**: pendiente de confirmar si la clínica tiene el
-  plan que habilita su API, para poder traer pacientes/citas automáticamente
-  en vez de crearlas a mano.
+  plan que habilita su API/webhooks, o si hay que usar el atajo del correo de
+  confirmación. El código receptor ya está listo (ver sección de arriba),
+  falta conectar la fuente real de datos.
+- **`WEBHOOK_SECRET`**: fija un valor largo y aleatorio en producción antes
+  de darle la URL del webhook a flowww/Zapier.

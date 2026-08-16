@@ -26,3 +26,9 @@ SMTP_FROM = os.getenv("SMTP_FROM", "consentimientos@tuestetica.com")
 
 ADMIN_USER = os.getenv("ADMIN_USER", "")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+# Secreto compartido para autenticar el webhook entrante (de flowww, Zapier, Make, etc.)
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
+
+# Con cuántas horas de antelación se manda el recordatorio de cita
+REMINDER_LEAD_HOURS = int(os.getenv("REMINDER_LEAD_HOURS", "24"))
