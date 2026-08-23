@@ -199,6 +199,7 @@ TEXT = {
         "affiliate_example_4": "¿Qué materiales tengo para promocionar?",
         "affiliate_cta_label": "👉 Sumate como afiliada/o (1 clic, gratis)",
         "affiliate_cta_note": "Te lleva directo a Hotmart. La afiliación es instantánea, sin aprobación manual.",
+        "assistant_limit_reached": "🔒 Este código llegó al límite de preguntas del asistente. Escribinos si necesitás seguir usándolo.",
     },
     "English": {
         "title": "💅 By Norja - Nail Price Coach",
@@ -387,6 +388,7 @@ TEXT = {
         "affiliate_example_4": "What materials do I get to promote it?",
         "affiliate_cta_label": "👉 Become an affiliate (1 click, free)",
         "affiliate_cta_note": "Takes you straight to Hotmart. Affiliation is instant, no manual approval.",
+        "assistant_limit_reached": "🔒 This code reached the assistant's question limit. Contact us if you need to keep using it.",
     }
 }
 
@@ -580,6 +582,39 @@ def get_affiliate_assistant_system_prompt():
         "pregunte cómo sumarse, decile que use el botón de afiliación de esta misma página — no inventes otra "
         "URL. Respuestas cortas (3-5 frases), cercanas y concretas."
     )
+
+
+AI_USAGE_LIMIT = 300
+
+
+def get_ai_usage_script_url():
+    return st.secrets.get("AI_USAGE_SCRIPT_URL", "")
+
+
+def get_ai_usage(code):
+    script_url = get_ai_usage_script_url()
+
+    if not script_url:
+        return 0
+
+    try:
+        response = requests.get(script_url, params={"action": "check", "code": code}, timeout=5)
+        response.raise_for_status()
+        return int(response.json().get("uses", 0))
+    except Exception:
+        return 0
+
+
+def increment_ai_usage(code):
+    script_url = get_ai_usage_script_url()
+
+    if not script_url:
+        return
+
+    try:
+        requests.get(script_url, params={"action": "increment", "code": code}, timeout=5)
+    except Exception:
+        pass
 
 
 def get_openai_client():
@@ -1271,6 +1306,12 @@ elif mode == t("assistant_mode"):
 
         st.stop()
 
+    pro_code = pro_access_input.strip()
+
+    if get_ai_usage(pro_code) >= AI_USAGE_LIMIT:
+        st.warning(t("assistant_limit_reached"))
+        st.stop()
+
     st.header(t("assistant_header"))
     st.info(t("assistant_info"))
     st.caption(t("assistant_disclaimer"))
@@ -1331,6 +1372,7 @@ elif mode == t("assistant_mode"):
 
         if answer:
             st.session_state.assistant_messages.append({"role": "assistant", "content": answer})
+            increment_ai_usage(pro_code)
 
 
 # ===============================
