@@ -9,5 +9,16 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Visit the app so Streamlit Cloud doesn't put it to sleep
-        run: curl --silent --show-error --fail --max-time 30 "https://nail-price-coach-norja.streamlit.app/" -o /dev/null
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Visit the app with a real browser and wake it up if asleep
+        run: python scripts/keep_streamlit_awake.py
