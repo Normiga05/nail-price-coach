@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app import config, notifications, pdf
 from app.auth import require_admin
 from app.database import Base, SessionLocal, engine, get_db
-from app.models import ConsentRequest, ConsentTemplate, Patient
+from app.models import ConsentPackage, ConsentRequest, ConsentTemplate, Patient
 from app.scheduler import start_scheduler
 from app.webhooks import router as webhooks_router
 
@@ -124,34 +124,7 @@ def admin_download(request_id: int, db: Session = Depends(get_db), _: str = Depe
     return FileResponse(config.BASE_DIR / consent_request.pdf_path, filename=f"consentimiento_{request_id}.pdf")
 
 
-@app.get("/sign/{token}")
-def sign_form(token: str, request: Request, db: Session = Depends(get_db)):
-    consent_request = db.query(ConsentRequest).filter(ConsentRequest.token == token).first()
-    if not consent_request:
-        return templates.TemplateResponse(request, "expired.html", {"message": "Este enlace no existe."})
-    if consent_request.status == "signed":
-        return templates.TemplateResponse(request, "signed_confirmation.html", {"consent": consent_request})
-    if consent_request.expires_at and consent_request.expires_at < datetime.utcnow():
-        consent_request.status = "expired"
-        db.commit()
-        return templates.TemplateResponse(
-            request, "expired.html", {"message": "Este enlace ha expirado. Pide a la clínica que te envíe uno nuevo."}
-        )
-    return templates.TemplateResponse(request, "sign.html", {"consent": consent_request})
-
-
-@app.post("/sign/{token}")
-def sign_submit(
-    token: str,
-    request: Request,
-    signer_name: str = Form(...),
-    signature_data: str = Form(...),
-    db: Session = Depends(get_db),
-):
-    consent_request = db.query(ConsentRequest).filter(ConsentRequest.token == token).first()
-    if not consent_request or consent_request.status == "signed":
-        return RedirectResponse(f"/sign/{token}")
-
+def _save_signature(db: Session, consent_request: ConsentRequest, request: Request, signer_name: str, signature_data: str):
     consent_request.signer_name = signer_name
     consent_request.signature_data = signature_data
     consent_request.signer_ip = request.client.host if request.client else None
@@ -166,4 +139,92 @@ def sign_submit(
     consent_request.doc_hash = doc_hash
     db.commit()
 
+
+@app.get("/sign/{token}")
+def sign_form(token: str, request: Request, db: Session = Depends(get_db)):
+    package = db.query(ConsentPackage).filter(ConsentPackage.token == token).first()
+    if package:
+        if package.expires_at and package.expires_at < datetime.utcnow() and package.status != "signed":
+            package.status = "expired"
+            db.commit()
+            return templates.TemplateResponse(
+                request, "expired.html", {"message": "Este enlace ha expirado. Pide a la clínica que te envíe uno nuevo."}
+            )
+        if all(item.status == "signed" for item in package.items):
+            if package.status != "signed":
+                package.status = "signed"
+                package.completed_at = datetime.utcnow()
+                db.commit()
+            return templates.TemplateResponse(request, "package_confirmation.html", {"package": package})
+        return templates.TemplateResponse(request, "package_overview.html", {"package": package, "items": package.items})
+
+    consent_request = db.query(ConsentRequest).filter(ConsentRequest.token == token).first()
+    if not consent_request:
+        return templates.TemplateResponse(request, "expired.html", {"message": "Este enlace no existe."})
+    if consent_request.status == "signed":
+        return templates.TemplateResponse(request, "signed_confirmation.html", {"consent": consent_request})
+    if consent_request.expires_at and consent_request.expires_at < datetime.utcnow():
+        consent_request.status = "expired"
+        db.commit()
+        return templates.TemplateResponse(
+            request, "expired.html", {"message": "Este enlace ha expirado. Pide a la clínica que te envíe uno nuevo."}
+        )
+    return templates.TemplateResponse(
+        request, "sign.html", {"consent": consent_request, "sign_action_url": f"/sign/{token}", "progress_label": None}
+    )
+
+
+@app.post("/sign/{token}")
+def sign_submit(
+    token: str,
+    request: Request,
+    signer_name: str = Form(...),
+    signature_data: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    consent_request = db.query(ConsentRequest).filter(ConsentRequest.token == token).first()
+    if not consent_request or consent_request.status == "signed":
+        return RedirectResponse(f"/sign/{token}")
+
+    _save_signature(db, consent_request, request, signer_name, signature_data)
     return templates.TemplateResponse(request, "signed_confirmation.html", {"consent": consent_request})
+
+
+@app.get("/sign/{token}/item/{item_id}")
+def sign_package_item_form(token: str, item_id: int, request: Request, db: Session = Depends(get_db)):
+    package = db.query(ConsentPackage).filter(ConsentPackage.token == token).first()
+    if not package:
+        return templates.TemplateResponse(request, "expired.html", {"message": "Este enlace no existe."})
+    item = next((i for i in package.items if i.id == item_id), None)
+    if not item:
+        return templates.TemplateResponse(request, "expired.html", {"message": "Este documento no existe."})
+    if item.status == "signed":
+        return RedirectResponse(f"/sign/{token}")
+
+    index = package.items.index(item) + 1
+    progress_label = f"Documento {index} de {len(package.items)}"
+    return templates.TemplateResponse(
+        request,
+        "sign.html",
+        {"consent": item, "sign_action_url": f"/sign/{token}/item/{item_id}", "progress_label": progress_label},
+    )
+
+
+@app.post("/sign/{token}/item/{item_id}")
+def sign_package_item_submit(
+    token: str,
+    item_id: int,
+    request: Request,
+    signer_name: str = Form(...),
+    signature_data: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    package = db.query(ConsentPackage).filter(ConsentPackage.token == token).first()
+    if not package:
+        return RedirectResponse(f"/sign/{token}")
+    item = next((i for i in package.items if i.id == item_id), None)
+    if not item or item.status == "signed":
+        return RedirectResponse(f"/sign/{token}")
+
+    _save_signature(db, item, request, signer_name, signature_data)
+    return RedirectResponse(f"/sign/{token}")

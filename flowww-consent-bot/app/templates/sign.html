@@ -2,10 +2,11 @@
 {% block title %}Firmar consentimiento{% endblock %}
 {% block content %}
   <h1>Consentimiento informado</h1>
+  {% if progress_label %}<p><em>{{ progress_label }}</em></p>{% endif %}
   <h3>{{ consent.template.treatment_name }}</h3>
   <div class="consent-text">{{ consent.template.body_text }}</div>
 
-  <form class="stack" method="post" action="/sign/{{ consent.token }}" id="sign-form">
+  <form class="stack" method="post" action="{{ sign_action_url }}" id="sign-form">
     <label>Nombre completo (como firma)</label>
     <input type="text" name="signer_name" required value="{{ consent.patient.full_name }}">
 

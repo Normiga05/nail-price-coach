@@ -17,6 +17,11 @@ Ese correo NO trae teléfono de la paciente, así que por esta vía solo se
 puede automatizar el envío por correo, no por WhatsApp, a menos que se
 cruce el "código de paciente" con una lista de contactos aparte.
 
+Si una cita tiene varios tratamientos, se asume que la celda
+"Tratamientos" trae varios, separados por coma o por salto de línea — no
+he visto todavía un correo real con más de un tratamiento, así que este
+heurístico hay que validarlo en cuanto llegue un ejemplo real así.
+
 flowww manda este correo directo a quien esté registrado como email de la
 paciente, no a la clínica — así que la clínica no puede simplemente
 "reenviarlo" (nunca les llega a ellos). Para que nos llegue una copia hace
@@ -45,8 +50,15 @@ FIELD_PATTERNS = {
     "patient_code": re.compile(r"C[oó]digo del paciente:\s*(\S+)"),
 }
 ROW_PATTERN = re.compile(
-    r"(\d{2}/\d{2}/\d{4})\s*\n?\s*(\d{2}:\d{2})\s*\n?\s*(\d{2}:\d{2})\s*\n?\s*(.+)"
+    r"(\d{2}/\d{2}/\d{4})\s*\n?\s*(\d{2}:\d{2})\s*\n?\s*(\d{2}:\d{2})\s*\n?\s*(.+?)"
+    r"(?:\n\s*\n|Si deseas anular|Atentamente|$)",
+    re.DOTALL,
 )
+
+
+def _split_treatments(raw: str) -> list[str]:
+    parts = re.split(r"[,\n]", raw)
+    return [p.strip() for p in parts if p.strip()]
 
 
 def _decode(value: str | None) -> str:
@@ -97,8 +109,11 @@ def parse_confirmation_email(msg: email.message.Message) -> dict | None:
 
     full_name = full_name_match.group(1).strip()
     patient_code = code_match.group(1).strip()
-    fecha, hora_inicio, _hora_fin, treatment_name = row_match.groups()
-    treatment_name = treatment_name.strip().splitlines()[0].strip()
+    fecha, hora_inicio, _hora_fin, treatments_raw = row_match.groups()
+    treatment_names = _split_treatments(treatments_raw)
+    if not treatment_names:
+        logger.warning("No se pudo extraer ningún tratamiento del correo, se ignora.")
+        return None
 
     appointment_at = datetime.strptime(f"{fecha} {hora_inicio}", "%d/%m/%Y %H:%M")
 
@@ -113,7 +128,7 @@ def parse_confirmation_email(msg: email.message.Message) -> dict | None:
         "external_id": external_id,
         "full_name": full_name,
         "patient_email": patient_email,
-        "treatment_name": treatment_name,
+        "treatment_names": treatment_names,
         "appointment_at": appointment_at,
     }
 
@@ -158,7 +173,7 @@ def check_flowww_inbox() -> int:
                         phone=None,
                         email=parsed["patient_email"],
                     ),
-                    treatment_name=parsed["treatment_name"],
+                    treatment_names=parsed["treatment_names"],
                     appointment_at=parsed["appointment_at"],
                     channel="email",
                 )

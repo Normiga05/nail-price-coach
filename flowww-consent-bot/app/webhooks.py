@@ -17,10 +17,14 @@ Payload esperado:
     "phone": "+34600111222",
     "email": "maria@example.com"
   },
-  "treatment_name": "Depilación láser",  # debe coincidir con el nombre de un ConsentTemplate
+  "treatment_names": ["Depilación láser", "Peeling químico"],  # 1 o más, deben coincidir con nombres de ConsentTemplate
   "appointment_at": "2026-08-20T10:00:00",
   "channel": "both"                       # opcional: whatsapp | email | both
 }
+
+Si la cita trae varios tratamientos, se manda UN SOLO enlace (ConsentPackage)
+que agrupa todos los documentos pendientes, para que la paciente los firme
+en una sola sesión en vez de recibir un mensaje por cada tratamiento.
 """
 
 from datetime import datetime
@@ -31,7 +35,7 @@ from sqlalchemy.orm import Session
 
 from app import config, notifications
 from app.database import SessionLocal
-from app.models import Appointment, ConsentRequest, ConsentTemplate, Patient
+from app.models import Appointment, ConsentPackage, ConsentRequest, ConsentTemplate, Patient
 
 router = APIRouter()
 
@@ -46,7 +50,7 @@ class FlowwwEventPayload(BaseModel):
     event: str
     external_id: str
     patient: PatientPayload
-    treatment_name: str
+    treatment_names: list[str]
     appointment_at: datetime | None = None
     channel: str = "both"
 
@@ -64,6 +68,16 @@ def _get_or_create_patient(db: Session, data: PatientPayload) -> Patient:
     return patient
 
 
+def _has_active_consent(db: Session, patient_id: int, template_id: int) -> bool:
+    return (
+        db.query(ConsentRequest)
+        .filter(ConsentRequest.patient_id == patient_id, ConsentRequest.template_id == template_id)
+        .filter(ConsentRequest.status != "expired")
+        .first()
+        is not None
+    )
+
+
 def process_flowww_event(db: Session, payload: FlowwwEventPayload) -> dict:
     """Lógica de negocio compartida: la usa el webhook HTTP y el lector de correo."""
     patient = _get_or_create_patient(db, payload.patient)
@@ -75,7 +89,7 @@ def process_flowww_event(db: Session, payload: FlowwwEventPayload) -> dict:
             db.add(
                 Appointment(
                     patient_id=patient.id,
-                    treatment_name=payload.treatment_name,
+                    treatment_name=", ".join(payload.treatment_names),
                     appointment_at=payload.appointment_at,
                     external_id=payload.external_id,
                     source="webhook",
@@ -85,34 +99,53 @@ def process_flowww_event(db: Session, payload: FlowwwEventPayload) -> dict:
         else:
             appointment_result = "already_existed"
 
-    template = db.query(ConsentTemplate).filter(ConsentTemplate.treatment_name == payload.treatment_name).first()
-    consent_result = "no_matching_template"
-    if template:
-        already_sent = (
-            db.query(ConsentRequest)
-            .filter(ConsentRequest.patient_id == patient.id, ConsentRequest.template_id == template.id)
-            .filter(ConsentRequest.status != "expired")
-            .first()
-        )
-        if already_sent:
-            consent_result = "already_sent"
-        elif not payload.patient.phone and not payload.patient.email:
-            consent_result = "no_contact_info"
+    matched_templates = []
+    unmatched_names = []
+    for name in payload.treatment_names:
+        template = db.query(ConsentTemplate).filter(ConsentTemplate.treatment_name == name).first()
+        if template:
+            matched_templates.append(template)
         else:
-            consent_request = ConsentRequest(patient_id=patient.id, template_id=template.id, channel=payload.channel)
-            db.add(consent_request)
-            db.commit()
-            db.refresh(consent_request)
+            unmatched_names.append(name)
 
-            sign_url = f"{config.BASE_URL}/sign/{consent_request.token}"
-            notifications.notify_patient(patient, sign_url, payload.channel)
+    pending_templates = [t for t in matched_templates if not _has_active_consent(db, patient.id, t.id)]
 
-            consent_request.status = "sent"
-            consent_request.sent_at = datetime.utcnow()
-            consent_result = "sent"
+    if not matched_templates:
+        consent_result = "no_matching_template"
+    elif not pending_templates:
+        consent_result = "already_sent"
+    elif not payload.patient.phone and not payload.patient.email:
+        consent_result = "no_contact_info"
+    else:
+        package = ConsentPackage(patient_id=patient.id, channel=payload.channel)
+        db.add(package)
+        db.flush()
+        for template in pending_templates:
+            db.add(
+                ConsentRequest(
+                    patient_id=patient.id,
+                    template_id=template.id,
+                    channel=payload.channel,
+                    package_id=package.id,
+                )
+            )
+        db.commit()
+        db.refresh(package)
+
+        sign_url = f"{config.BASE_URL}/sign/{package.token}"
+        notifications.notify_patient(patient, sign_url, payload.channel)
+
+        package.status = "sent"
+        package.sent_at = datetime.utcnow()
+        consent_result = f"sent ({len(pending_templates)} documento(s))"
 
     db.commit()
-    return {"patient_id": patient.id, "appointment": appointment_result, "consent": consent_result}
+    return {
+        "patient_id": patient.id,
+        "appointment": appointment_result,
+        "consent": consent_result,
+        "unmatched_treatments": unmatched_names,
+    }
 
 
 @router.post("/webhooks/flowww")

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Tus consentimientos pendientes{% endblock %}
+{% block content %}
+  <h1>Consentimientos informados</h1>
+  <p>Hola {{ package.patient.full_name }}, tienes {{ items|length }} documento(s) para esta cita. Fírmalos uno por uno:</p>
+
+  <table>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ loop.index }}. {{ item.template.treatment_name }}</td>
+        <td>
+          {% if item.status == "signed" %}
+            <span class="status status-signed">firmado</span>
+          {% else %}
+            <a class="btn" href="/sign/{{ package.token }}/item/{{ item.id }}">Firmar</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

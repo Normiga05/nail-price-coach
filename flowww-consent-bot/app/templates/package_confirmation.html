@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Consentimientos firmados{% endblock %}
+{% block content %}
+  <h1>✅ Todo firmado</h1>
+  <p>Gracias, {{ package.patient.full_name }}. Firmaste {{ package.items|length }} documento(s):</p>
+  <ul>
+    {% for item in package.items %}
+    <li>{{ item.template.treatment_name }}</li>
+    {% endfor %}
+  </ul>
+  <p>Ya puedes cerrar esta ventana.</p>
+{% endblock %}

@@ -71,7 +71,7 @@ Formato de payload esperado (ver `app/webhooks.py` para el detalle):
   "event": "appointment.created",
   "external_id": "id-de-la-cita-en-flowww",
   "patient": { "full_name": "...", "phone": "+34...", "email": "..." },
-  "treatment_name": "Depilación láser",
+  "treatment_names": ["Depilación láser", "Peeling químico"],
   "appointment_at": "2026-08-20T10:00:00",
   "channel": "both"
 }
@@ -80,9 +80,13 @@ Formato de payload esperado (ver `app/webhooks.py` para el detalle):
 Al recibir un evento:
 1. Busca o crea la paciente (por teléfono o correo, evita duplicados).
 2. Guarda la cita (deduplicada por `external_id`).
-3. Si `treatment_name` coincide con el nombre de una plantilla de
-   consentimiento existente, dispara el envío automáticamente por WhatsApp/
-   correo — sin que el staff tenga que hacer nada.
+3. Por cada nombre en `treatment_names` que coincida con una plantilla de
+   consentimiento existente, agrupa todos los pendientes en **un solo
+   enlace** (`ConsentPackage`) y lo manda automáticamente por WhatsApp/
+   correo — sin que el staff tenga que hacer nada. Si la paciente tiene una
+   sola cita con un solo tratamiento, el paquete tiene un solo documento;
+   si tiene varios en la misma cita, los firma todos en la misma sesión
+   ("Documento 1 de 3", etc.), sin recibir un mensaje distinto por cada uno.
 4. Un job en segundo plano revisa cada 5 minutos las citas guardadas y manda
    un **recordatorio automático** (`REMINDER_LEAD_HOURS` en `.env`, 24h por
    defecto) antes de la hora de la cita, una sola vez por cita.

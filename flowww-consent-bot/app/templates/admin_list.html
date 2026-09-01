@@ -18,6 +18,8 @@
         <td>
           {% if r.status == "signed" %}
             <a href="/admin/download/{{ r.id }}">Descargar PDF</a>
+          {% elif r.package_id %}
+            <a href="/sign/{{ r.package.token }}" target="_blank">Ver enlace (paquete)</a>
           {% else %}
             <a href="/sign/{{ r.token }}" target="_blank">Ver enlace</a>
           {% endif %}

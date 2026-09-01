@@ -54,6 +54,29 @@ class Appointment(Base):
     patient = relationship("Patient")
 
 
+class ConsentPackage(Base):
+    """Agrupa varios ConsentRequest (uno por tratamiento) detrás de un solo
+    enlace, para cuando una paciente tiene varios tratamientos en la misma
+    cita y firma todo en una sola sesión."""
+
+    __tablename__ = "consent_packages"
+
+    id = Column(Integer, primary_key=True)
+    token = Column(String(64), unique=True, index=True, default=generate_token)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+
+    channel = Column(String(20), default="both")
+    status = Column(String(20), default="pending")  # pending | sent | signed | expired
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    sent_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, default=default_expiry)
+
+    patient = relationship("Patient")
+    items = relationship("ConsentRequest", back_populates="package", order_by="ConsentRequest.id")
+
+
 class ConsentRequest(Base):
     __tablename__ = "consent_requests"
 
@@ -61,6 +84,7 @@ class ConsentRequest(Base):
     token = Column(String(64), unique=True, index=True, default=generate_token)
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
     template_id = Column(Integer, ForeignKey("consent_templates.id"), nullable=False)
+    package_id = Column(Integer, ForeignKey("consent_packages.id"), nullable=True)
 
     channel = Column(String(20), default="both")  # whatsapp | email | both
     status = Column(String(20), default="pending")  # pending | sent | signed | expired
@@ -71,7 +95,7 @@ class ConsentRequest(Base):
     expires_at = Column(DateTime, default=default_expiry)
 
     signer_name = Column(String(200), nullable=True)
-    signature_data = Column(Text, nullable=True)  # base64 PNG of the drawn signature
+    signature_data = Column(Text, nullable=True)  # base64 PNG de la firma dibujada
     signer_ip = Column(String(60), nullable=True)
     signer_user_agent = Column(String(300), nullable=True)
     doc_hash = Column(String(80), nullable=True)
@@ -79,3 +103,4 @@ class ConsentRequest(Base):
 
     patient = relationship("Patient", back_populates="consent_requests")
     template = relationship("ConsentTemplate", back_populates="consent_requests")
+    package = relationship("ConsentPackage", back_populates="items")
