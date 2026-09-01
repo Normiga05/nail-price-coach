@@ -124,6 +124,75 @@ def admin_download(request_id: int, db: Session = Depends(get_db), _: str = Depe
     return FileResponse(config.BASE_DIR / consent_request.pdf_path, filename=f"consentimiento_{request_id}.pdf")
 
 
+@app.get("/admin/templates")
+def templates_list(
+    request: Request, error: str = "", db: Session = Depends(get_db), _: str = Depends(require_admin)
+):
+    template_options = db.query(ConsentTemplate).order_by(ConsentTemplate.treatment_name).all()
+    error_message = "No se puede borrar: ya tiene consentimientos enviados con esta plantilla." if error == "en_uso" else None
+    return templates.TemplateResponse(
+        request, "templates_list.html", {"templates": template_options, "error_message": error_message}
+    )
+
+
+@app.get("/admin/templates/new")
+def template_new_form(request: Request, _: str = Depends(require_admin)):
+    return templates.TemplateResponse(
+        request, "template_form.html", {"template": None, "form_action": "/admin/templates/new"}
+    )
+
+
+@app.post("/admin/templates/new")
+def template_new_submit(
+    treatment_name: str = Form(...),
+    body_text: str = Form(...),
+    db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
+):
+    db.add(ConsentTemplate(treatment_name=treatment_name.strip(), body_text=body_text))
+    db.commit()
+    return RedirectResponse("/admin/templates", status_code=303)
+
+
+@app.get("/admin/templates/{template_id}/edit")
+def template_edit_form(template_id: int, request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    template = db.query(ConsentTemplate).get(template_id)
+    if not template:
+        return RedirectResponse("/admin/templates")
+    return templates.TemplateResponse(
+        request, "template_form.html", {"template": template, "form_action": f"/admin/templates/{template_id}/edit"}
+    )
+
+
+@app.post("/admin/templates/{template_id}/edit")
+def template_edit_submit(
+    template_id: int,
+    treatment_name: str = Form(...),
+    body_text: str = Form(...),
+    db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
+):
+    template = db.query(ConsentTemplate).get(template_id)
+    if template:
+        template.treatment_name = treatment_name.strip()
+        template.body_text = body_text
+        db.commit()
+    return RedirectResponse("/admin/templates", status_code=303)
+
+
+@app.post("/admin/templates/{template_id}/delete")
+def template_delete(template_id: int, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    template = db.query(ConsentTemplate).get(template_id)
+    if template:
+        in_use = db.query(ConsentRequest).filter(ConsentRequest.template_id == template_id).first() is not None
+        if not in_use:
+            db.delete(template)
+            db.commit()
+        else:
+            return RedirectResponse("/admin/templates?error=en_uso", status_code=303)
+    return RedirectResponse("/admin/templates", status_code=303)
+
+
 def _save_signature(db: Session, consent_request: ConsentRequest, request: Request, signer_name: str, signature_data: str):
     consent_request.signer_name = signer_name
     consent_request.signature_data = signature_data

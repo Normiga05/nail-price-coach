@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Plantillas de consentimiento{% endblock %}
+{% block content %}
+  <h1>📋 Plantillas de consentimiento</h1>
+  <p>
+    <a href="/admin">← Volver a consentimientos</a> ·
+    <a class="btn" href="/admin/templates/new">+ Nueva plantilla</a>
+  </p>
+  {% if error_message %}
+  <p style="background:#fbdede;border:1px solid #d99;padding:10px;border-radius:6px;">⚠️ {{ error_message }}</p>
+  {% endif %}
+  <table>
+    <thead>
+      <tr><th>Tratamiento</th><th>Vista previa del texto</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for t in templates %}
+      <tr>
+        <td>{{ t.treatment_name }}</td>
+        <td>{{ t.body_text[:80] }}{% if t.body_text|length > 80 %}…{% endif %}</td>
+        <td>
+          <a href="/admin/templates/{{ t.id }}/edit">Editar</a>
+          <form method="post" action="/admin/templates/{{ t.id }}/delete" style="display:inline"
+                onsubmit="return confirm('¿Borrar la plantilla {{ t.treatment_name }}?');">
+            <button type="submit" style="background:none;border:none;color:#a33;cursor:pointer;padding:0;margin-left:8px;">Borrar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3">Todavía no hay plantillas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

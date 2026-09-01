@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar" if template else "Nueva" }} plantilla{% endblock %}
+{% block content %}
+  <h1>{{ "Editar plantilla" if template else "Nueva plantilla de consentimiento" }}</h1>
+  <p><a href="/admin/templates">← Volver a plantillas</a></p>
+  <form class="stack" method="post" action="{{ form_action }}">
+    <label>Nombre del tratamiento</label>
+    <input type="text" name="treatment_name" required value="{{ template.treatment_name if template else '' }}"
+           placeholder="Ej: Depilación láser">
+    <p style="font-size:0.85rem;color:#555;">
+      Este nombre debe coincidir exactamente con el que usa flowww para que
+      el envío automático lo reconozca.
+    </p>
+
+    <label>Texto del consentimiento informado</label>
+    <textarea name="body_text" required rows="14">{{ template.body_text if template else '' }}</textarea>
+    <p style="font-size:0.85rem;color:#555;">
+      Pega aquí el texto legal real que usa la clínica (papel/Word), tal
+      cual. No se genera contenido automáticamente.
+    </p>
+
+    <p style="margin-top:20px;"><button class="btn" type="submit">Guardar</button></p>
+  </form>
+{% endblock %}

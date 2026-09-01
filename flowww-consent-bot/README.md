@@ -10,6 +10,16 @@ consentimiento a mano en el panel, y además ya existe un webhook
 tratamientos en cuanto flowww (o un puente vía Zapier/Make) confirme cómo
 entregar esos datos — ver "Automatización con flowww" más abajo.
 
+## Gestión de plantillas (`/admin/templates`)
+
+Cada tratamiento es solo una fila en la base de datos (nombre + texto
+legal) — no hay límite ni trabajo extra por tener 10, 30 o 60 tratamientos
+distintos. Desde `/admin/templates` el staff puede crear, editar y borrar
+plantillas sin depender de que alguien toque el código. El nombre del
+tratamiento debe coincidir exactamente con el que usa flowww para que el
+envío automático (webhook/correo) lo reconozca. No se borra una plantilla
+que ya tenga consentimientos enviados, para no romper el historial.
+
 ## Flujo
 
 1. El staff entra a `/admin/new`, elige la paciente y el tratamiento.
