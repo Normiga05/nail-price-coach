@@ -93,6 +93,39 @@ lector de correos automático (ej. vía Mailgun/SendGrid inbound routing) que
 traduzca ese correo al formato de arriba — no requiere volver a tocar la
 lógica de negocio, solo ese primer parseo.
 
+## Lector de correo de flowww (`app/email_ingest.py`)
+
+Ya está construido y probado contra un correo real de flowww (asunto
+"Confirmación de reserva", remitente `noreply@flowww.com`): extrae nombre
+de la paciente, código de paciente, tratamiento y fecha/hora, y dispara el
+mismo flujo de arriba automáticamente.
+
+**Aviso importante**: ese correo lo manda flowww directo al email
+registrado de la paciente, no a la clínica — así que la clínica no puede
+simplemente "reenviarlo" (nunca les llega a ellos). Para que el bot reciba
+una copia de verdad, sin que nadie tenga que hacer nada por cada reserva,
+hace falta que flowww tenga una opción de configuración de **"copia
+interna"/"correo de notificaciones"** que se active una sola vez apuntando
+a la bandeja que usa el bot — está pendiente de confirmar si existe. El
+correo tampoco trae el teléfono de la paciente, así que por esta vía el
+consentimiento solo se puede mandar por correo, no por WhatsApp.
+
+Configuración (`.env`):
+
+```
+EMAIL_IMAP_HOST=imap.gmail.com
+EMAIL_IMAP_PORT=993
+EMAIL_IMAP_USER=bandeja-del-bot@gmail.com
+EMAIL_IMAP_PASSWORD=una-contraseña-de-aplicación
+EMAIL_IMAP_FOLDER=INBOX
+FLOWWW_SENDER_EMAIL=noreply@flowww.com
+```
+
+Un job en segundo plano revisa esa bandeja cada 5 minutos (mismo scheduler
+que los recordatorios, ver `app/scheduler.py`), marca cada correo como
+leído tras procesarlo, y es seguro reprocesar por error porque cada cita se
+deduplica con un id derivado de código de paciente + fecha + hora.
+
 ## Pendiente antes de producción
 
 - **Textos legales reales**: los dos tratamientos de ejemplo (`Depilación

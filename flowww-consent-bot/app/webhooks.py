@@ -64,6 +64,57 @@ def _get_or_create_patient(db: Session, data: PatientPayload) -> Patient:
     return patient
 
 
+def process_flowww_event(db: Session, payload: FlowwwEventPayload) -> dict:
+    """Lógica de negocio compartida: la usa el webhook HTTP y el lector de correo."""
+    patient = _get_or_create_patient(db, payload.patient)
+
+    appointment_result = "skipped"
+    if payload.appointment_at:
+        existing = db.query(Appointment).filter(Appointment.external_id == payload.external_id).first()
+        if not existing:
+            db.add(
+                Appointment(
+                    patient_id=patient.id,
+                    treatment_name=payload.treatment_name,
+                    appointment_at=payload.appointment_at,
+                    external_id=payload.external_id,
+                    source="webhook",
+                )
+            )
+            appointment_result = "created"
+        else:
+            appointment_result = "already_existed"
+
+    template = db.query(ConsentTemplate).filter(ConsentTemplate.treatment_name == payload.treatment_name).first()
+    consent_result = "no_matching_template"
+    if template:
+        already_sent = (
+            db.query(ConsentRequest)
+            .filter(ConsentRequest.patient_id == patient.id, ConsentRequest.template_id == template.id)
+            .filter(ConsentRequest.status != "expired")
+            .first()
+        )
+        if already_sent:
+            consent_result = "already_sent"
+        elif not payload.patient.phone and not payload.patient.email:
+            consent_result = "no_contact_info"
+        else:
+            consent_request = ConsentRequest(patient_id=patient.id, template_id=template.id, channel=payload.channel)
+            db.add(consent_request)
+            db.commit()
+            db.refresh(consent_request)
+
+            sign_url = f"{config.BASE_URL}/sign/{consent_request.token}"
+            notifications.notify_patient(patient, sign_url, payload.channel)
+
+            consent_request.status = "sent"
+            consent_request.sent_at = datetime.utcnow()
+            consent_result = "sent"
+
+    db.commit()
+    return {"patient_id": patient.id, "appointment": appointment_result, "consent": consent_result}
+
+
 @router.post("/webhooks/flowww")
 def receive_flowww_event(payload: FlowwwEventPayload, x_webhook_secret: str = Header(default="")):
     if not config.WEBHOOK_SECRET or x_webhook_secret != config.WEBHOOK_SECRET:
@@ -71,50 +122,6 @@ def receive_flowww_event(payload: FlowwwEventPayload, x_webhook_secret: str = He
 
     db = SessionLocal()
     try:
-        patient = _get_or_create_patient(db, payload.patient)
-
-        appointment_result = "skipped"
-        if payload.appointment_at:
-            existing = db.query(Appointment).filter(Appointment.external_id == payload.external_id).first()
-            if not existing:
-                db.add(
-                    Appointment(
-                        patient_id=patient.id,
-                        treatment_name=payload.treatment_name,
-                        appointment_at=payload.appointment_at,
-                        external_id=payload.external_id,
-                        source="webhook",
-                    )
-                )
-                appointment_result = "created"
-            else:
-                appointment_result = "already_existed"
-
-        template = db.query(ConsentTemplate).filter(ConsentTemplate.treatment_name == payload.treatment_name).first()
-        consent_result = "no_matching_template"
-        if template:
-            already_sent = (
-                db.query(ConsentRequest)
-                .filter(ConsentRequest.patient_id == patient.id, ConsentRequest.template_id == template.id)
-                .filter(ConsentRequest.status != "expired")
-                .first()
-            )
-            if already_sent:
-                consent_result = "already_sent"
-            else:
-                consent_request = ConsentRequest(patient_id=patient.id, template_id=template.id, channel=payload.channel)
-                db.add(consent_request)
-                db.commit()
-                db.refresh(consent_request)
-
-                sign_url = f"{config.BASE_URL}/sign/{consent_request.token}"
-                notifications.notify_patient(patient, sign_url, payload.channel)
-
-                consent_request.status = "sent"
-                consent_request.sent_at = datetime.utcnow()
-                consent_result = "sent"
-
-        db.commit()
-        return {"patient_id": patient.id, "appointment": appointment_result, "consent": consent_result}
+        return process_flowww_event(db, payload)
     finally:
         db.close()

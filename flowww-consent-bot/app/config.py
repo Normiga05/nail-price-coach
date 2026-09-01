@@ -32,3 +32,11 @@ WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 
 # Con cuántas horas de antelación se manda el recordatorio de cita
 REMINDER_LEAD_HOURS = int(os.getenv("REMINDER_LEAD_HOURS", "24"))
+
+# Bandeja donde llegan (o se reenvían) los correos de confirmación de flowww
+EMAIL_IMAP_HOST = os.getenv("EMAIL_IMAP_HOST", "")
+EMAIL_IMAP_PORT = int(os.getenv("EMAIL_IMAP_PORT", "993"))
+EMAIL_IMAP_USER = os.getenv("EMAIL_IMAP_USER", "")
+EMAIL_IMAP_PASSWORD = os.getenv("EMAIL_IMAP_PASSWORD", "")
+EMAIL_IMAP_FOLDER = os.getenv("EMAIL_IMAP_FOLDER", "INBOX")
+FLOWWW_SENDER_EMAIL = os.getenv("FLOWWW_SENDER_EMAIL", "noreply@flowww.com")

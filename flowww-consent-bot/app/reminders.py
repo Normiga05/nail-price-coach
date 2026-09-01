@@ -8,8 +8,6 @@ cuando falta REMINDER_LEAD_HOURS horas o menos para la cita, una sola vez.
 import logging
 from datetime import datetime, timedelta
 
-from apscheduler.schedulers.background import BackgroundScheduler
-
 from app import config, notifications
 from app.database import SessionLocal
 from app.models import Appointment
@@ -64,10 +62,3 @@ def check_and_send_reminders() -> int:
     if sent:
         logger.info("Recordatorios enviados: %d", sent)
     return sent
-
-
-def start_scheduler() -> BackgroundScheduler:
-    scheduler = BackgroundScheduler(timezone="UTC")
-    scheduler.add_job(check_and_send_reminders, "interval", minutes=5, id="appointment_reminders")
-    scheduler.start()
-    return scheduler

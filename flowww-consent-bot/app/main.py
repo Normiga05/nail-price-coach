@@ -10,7 +10,7 @@ from app import config, notifications, pdf
 from app.auth import require_admin
 from app.database import Base, SessionLocal, engine, get_db
 from app.models import ConsentRequest, ConsentTemplate, Patient
-from app.reminders import start_scheduler
+from app.scheduler import start_scheduler
 from app.webhooks import router as webhooks_router
 
 Base.metadata.create_all(bind=engine)
