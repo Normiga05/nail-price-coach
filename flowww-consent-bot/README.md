@@ -50,6 +50,25 @@ tratamiento — la paciente lo completa todo en una sola sesión la primera
 vez; en visitas siguientes, solo le llega el consentimiento del tratamiento
 nuevo.
 
+El teléfono que la paciente escribe al rellenar la Historia Clínica se
+guarda en su ficha automáticamente (si todavía no lo teníamos), para que
+desde su siguiente cita el envío también pueda salir por WhatsApp y no
+solo por correo.
+
+## Importar pacientes existentes (`/admin/patients/import`)
+
+Los correos de flowww solo traen el email de la paciente, no el teléfono
+— así que la primera vez que una paciente pasa por el bot, el envío por
+WhatsApp depende de que ya tengamos su teléfono guardado (si no, sale solo
+por correo hasta que complete la Historia Clínica).
+
+Para no depender de eso con las pacientes que la clínica ya tiene desde
+antes, `/admin/patients/import` acepta un CSV con columnas
+`nombre,telefono,email` y crea/actualiza sus fichas de una sola vez — así
+desde la primera cita que pase por el bot, ya sale por WhatsApp también.
+Hace *match* por email si lo trae (para coincidir con lo que manda
+flowww), si no por teléfono.
+
 ## Arranque local
 
 ```bash

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Importar pacientes{% endblock %}
+{% block content %}
+  <h1>📥 Importar pacientes existentes</h1>
+  <p><a href="/admin">← Volver a consentimientos</a></p>
+
+  <p>
+    Sube un archivo CSV con las pacientes que ya tiene la clínica, para que
+    su teléfono quede guardado desde ya y no tengan que rellenar la
+    Historia Clínica solo para eso. Columnas esperadas (primera fila,
+    con esos nombres exactos): <code>nombre,telefono,email</code>
+    (el email es opcional, pero ayuda a que coincida con los correos que
+    manda flowww).
+  </p>
+
+  {% if result %}
+  <p style="background:#d9f2df;border:1px solid #9c9;padding:10px;border-radius:6px;">✅ {{ result }}</p>
+  {% endif %}
+
+  <form class="stack" method="post" action="/admin/patients/import" enctype="multipart/form-data">
+    <label>Archivo CSV</label>
+    <input type="file" name="file" accept=".csv" required>
+    <p style="margin-top:20px;"><button class="btn" type="submit">Importar</button></p>
+  </form>
+{% endblock %}

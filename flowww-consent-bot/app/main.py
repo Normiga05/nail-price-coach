@@ -1,7 +1,10 @@
+import csv
+import io
 import json
+import logging
 from datetime import datetime
 
-from fastapi import Depends, FastAPI, Form, Request
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -14,6 +17,8 @@ from app.database import Base, SessionLocal, engine, get_db
 from app.models import ClinicalHistory, ConsentPackage, ConsentRequest, ConsentTemplate, Patient
 from app.scheduler import start_scheduler
 from app.webhooks import router as webhooks_router
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s: %(message)s")
 
 Base.metadata.create_all(bind=engine)
 
@@ -186,6 +191,52 @@ def admin_download_history(history_id: int, db: Session = Depends(get_db), _: st
     if not history or not history.pdf_path:
         return RedirectResponse("/admin")
     return FileResponse(config.BASE_DIR / history.pdf_path, filename=f"historia_clinica_{history_id}.pdf")
+
+
+@app.get("/admin/patients/import")
+def patients_import_form(request: Request, _: str = Depends(require_admin)):
+    return templates.TemplateResponse(request, "patients_import.html", {"result": None})
+
+
+@app.post("/admin/patients/import")
+async def patients_import_submit(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
+):
+    raw = (await file.read()).decode("utf-8-sig", errors="ignore")
+    reader = csv.DictReader(io.StringIO(raw))
+
+    created = updated = skipped = 0
+    for row in reader:
+        name = (row.get("nombre") or "").strip()
+        phone = (row.get("telefono") or "").strip() or None
+        patient_email = (row.get("email") or "").strip() or None
+
+        if not name or not (phone or patient_email):
+            skipped += 1
+            continue
+
+        patient = None
+        if patient_email:
+            patient = db.query(Patient).filter(Patient.email == patient_email).first()
+        if not patient and phone:
+            patient = db.query(Patient).filter(Patient.phone == phone).first()
+
+        if patient:
+            if phone and not patient.phone:
+                patient.phone = phone
+            if patient_email and not patient.email:
+                patient.email = patient_email
+            updated += 1
+        else:
+            db.add(Patient(full_name=name, phone=phone, email=patient_email))
+            created += 1
+
+    db.commit()
+    result = f"Listo: {created} paciente(s) nueva(s), {updated} actualizada(s), {skipped} fila(s) omitida(s) (sin nombre o sin contacto)."
+    return templates.TemplateResponse(request, "patients_import.html", {"result": result})
 
 
 @app.get("/admin/templates")
@@ -433,6 +484,10 @@ async def clinical_history_submit(token: str, history_id: int, request: Request,
         "como_conocio": form.get("como_conocio", ""),
         "referencia_de": form.get("referencia_de", ""),
     }
+
+    submitted_phone = form.get("telefono", "").strip()
+    if submitted_phone and not package.patient.phone:
+        package.patient.phone = submitted_phone
 
     history.answers_json = json.dumps(answers, ensure_ascii=False)
     history.signer_name = form.get("signer_name", "")
