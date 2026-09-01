@@ -17,16 +17,24 @@ Ese correo NO trae teléfono de la paciente, así que por esta vía solo se
 puede automatizar el envío por correo, no por WhatsApp, a menos que se
 cruce el "código de paciente" con una lista de contactos aparte.
 
-Si una cita tiene varios tratamientos, se asume que la celda
-"Tratamientos" trae varios, separados por coma o por salto de línea — no
-he visto todavía un correo real con más de un tratamiento, así que este
-heurístico hay que validarlo en cuanto llegue un ejemplo real así.
+Confirmado con un correo real: cuando hay varios tratamientos en la misma
+cita, la celda "Tratamientos" los separa con " + ", ej.:
+
+    Polinucleotidos Biorevitalización 1 sesión + Radiesse 1 vial + Toxina
+    Botulínica 3 zonas
 
 flowww manda este correo directo a quien esté registrado como email de la
-paciente, no a la clínica — así que la clínica no puede simplemente
-"reenviarlo" (nunca les llega a ellos). Para que nos llegue una copia hace
-falta que flowww tenga una opción de configuración de "copia interna" que
-apunte a la bandeja que se conecta aquí (ver README).
+paciente (confirmado también por la clínica), no a la clínica — así que
+la clínica no puede simplemente "reenviarlo" (nunca les llega a ellos).
+Para que nos llegue una copia hace falta que flowww tenga una opción de
+configuración de "copia interna" que apunte a la bandeja que se conecta
+aquí (ver README).
+
+Nota para más adelante: flowww también manda un correo distinto cuando se
+cancela una cita (asunto "Confirmación cita anulada", con los mismos
+campos más un "Número de reserva"). Ese tipo de correo todavía no se
+procesa aquí (se ignora por el filtro de asunto), así que si la clínica
+cancela una cita ya notificada, el bot no se entera todavía.
 """
 
 import email
@@ -57,7 +65,7 @@ ROW_PATTERN = re.compile(
 
 
 def _split_treatments(raw: str) -> list[str]:
-    parts = re.split(r"[,\n]", raw)
+    parts = re.split(r"[,\n]|\s\+\s", raw)
     return [p.strip() for p in parts if p.strip()]
 
 
