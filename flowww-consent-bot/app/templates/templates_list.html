@@ -16,7 +16,7 @@
     <tbody>
       {% for t in templates %}
       <tr>
-        <td>{{ t.treatment_name }}</td>
+        <td>{{ t.treatment_name }}{% if t.is_general %} <span class="status status-sent">general</span>{% endif %}</td>
         <td>{{ t.body_text[:80] }}{% if t.body_text|length > 80 %}…{% endif %}</td>
         <td>
           <a href="/admin/templates/{{ t.id }}/edit">Editar</a>

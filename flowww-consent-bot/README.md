@@ -22,13 +22,33 @@ que ya tenga consentimientos enviados, para no romper el historial.
 
 ## Flujo
 
-1. El staff entra a `/admin/new`, elige la paciente y el tratamiento.
+1. El staff entra a `/admin/new`, elige la paciente y el tratamiento (o llega
+   automáticamente vía webhook/correo).
 2. El bot genera un enlace único de firma y lo envía por WhatsApp (Twilio) y/o
    correo (SMTP).
 3. La paciente abre el enlace, lee el consentimiento, escribe su nombre y
    firma con el dedo/ratón.
 4. El bot genera un PDF firmado con la evidencia (IP, fecha/hora, hash del
    documento) y lo guarda. El staff lo ve y descarga desde `/admin`.
+
+## Documentos generales vs. por tratamiento
+
+No todos los documentos van atados a un tratamiento. Una `ConsentTemplate`
+puede marcarse como **general** (`is_general`, casilla en `/admin/templates`)
+— esos se mandan una sola vez a toda paciente nueva, sin importar qué
+tratamiento tenga agendado (ej. Protección de Datos/LOPD). Ya viene
+sembrado el texto real de Protección de Datos de la clínica.
+
+Además existe la **Historia Clínica**, que no es un documento de "leer y
+firmar" sino un formulario real (datos personales + cuestionario médico:
+alergias, medicación, ~20 condiciones de salud, embarazo, hábitos, etc. —
+ver `app/clinical_history_fields.py`). También se manda una sola vez por
+paciente. Cuando llega un evento (webhook o correo) de una paciente que
+todavía no tiene historia clínica ni ha firmado los documentos generales,
+el bot los agrega automáticamente al mismo `ConsentPackage` que el
+tratamiento — la paciente lo completa todo en una sola sesión la primera
+vez; en visitas siguientes, solo le llega el consentimiento del tratamiento
+nuevo.
 
 ## Arranque local
 

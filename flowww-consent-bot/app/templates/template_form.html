@@ -12,6 +12,12 @@
       el envío automático lo reconozca.
     </p>
 
+    <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
+      <input type="checkbox" name="is_general" value="true" style="width:auto;"
+             {% if template and template.is_general %}checked{% endif %}>
+      Es un documento general (se manda a toda paciente nueva, sin importar el tratamiento)
+    </label>
+
     <label>Texto del consentimiento informado</label>
     <textarea name="body_text" required rows="14">{{ template.body_text if template else '' }}</textarea>
     <p style="font-size:0.85rem;color:#555;">

@@ -33,4 +33,29 @@
       {% endfor %}
     </tbody>
   </table>
+
+  <h2 style="margin-top:32px;">📋 Historias clínicas</h2>
+  <table>
+    <thead>
+      <tr><th>Paciente</th><th>Estado</th><th>Creado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for h in histories %}
+      <tr>
+        <td>{{ h.patient.full_name }}</td>
+        <td><span class="status status-{{ h.status }}">{{ h.status }}</span></td>
+        <td>{{ h.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+        <td>
+          {% if h.status == "signed" %}
+            <a href="/admin/download/history/{{ h.id }}">Descargar PDF</a>
+          {% elif h.package %}
+            <a href="/sign/{{ h.package.token }}" target="_blank">Ver enlace</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">Todavía no hay historias clínicas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 {% endblock %}

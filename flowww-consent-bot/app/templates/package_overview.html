@@ -2,13 +2,25 @@
 {% block title %}Tus consentimientos pendientes{% endblock %}
 {% block content %}
   <h1>Consentimientos informados</h1>
-  <p>Hola {{ package.patient.full_name }}, tienes {{ items|length }} documento(s) para esta cita. Fírmalos uno por uno:</p>
+  <p>Hola {{ package.patient.full_name }}, tienes {{ items|length + (1 if history else 0) }} documento(s) para esta cita. Complétalos uno por uno:</p>
 
   <table>
     <tbody>
+      {% if history %}
+      <tr>
+        <td>1. Historia clínica</td>
+        <td>
+          {% if history.status == "signed" %}
+            <span class="status status-signed">completado</span>
+          {% else %}
+            <a class="btn" href="/sign/{{ package.token }}/history/{{ history.id }}">Completar formulario</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
       {% for item in items %}
       <tr>
-        <td>{{ loop.index }}. {{ item.template.treatment_name }}</td>
+        <td>{{ loop.index + (1 if history else 0) }}. {{ item.template.treatment_name }}</td>
         <td>
           {% if item.status == "signed" %}
             <span class="status status-signed">firmado</span>

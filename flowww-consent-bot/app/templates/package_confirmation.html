@@ -2,8 +2,11 @@
 {% block title %}Consentimientos firmados{% endblock %}
 {% block content %}
   <h1>✅ Todo firmado</h1>
-  <p>Gracias, {{ package.patient.full_name }}. Firmaste {{ package.items|length }} documento(s):</p>
+  <p>Gracias, {{ package.patient.full_name }}. Completaste {{ package.items|length + (1 if package.clinical_history else 0) }} documento(s):</p>
   <ul>
+    {% if package.clinical_history %}
+    <li>Historia clínica</li>
+    {% endif %}
     {% for item in package.items %}
     <li>{{ item.template.treatment_name }}</li>
     {% endfor %}

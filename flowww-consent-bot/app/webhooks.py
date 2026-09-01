@@ -35,7 +35,7 @@ from sqlalchemy.orm import Session
 
 from app import config, notifications
 from app.database import SessionLocal
-from app.models import Appointment, ConsentPackage, ConsentRequest, ConsentTemplate, Patient
+from app.models import Appointment, ClinicalHistory, ConsentPackage, ConsentRequest, ConsentTemplate, Patient
 
 router = APIRouter()
 
@@ -102,17 +102,25 @@ def process_flowww_event(db: Session, payload: FlowwwEventPayload) -> dict:
     matched_templates = []
     unmatched_names = []
     for name in payload.treatment_names:
-        template = db.query(ConsentTemplate).filter(ConsentTemplate.treatment_name == name).first()
+        template = (
+            db.query(ConsentTemplate)
+            .filter(ConsentTemplate.treatment_name == name, ConsentTemplate.is_general.is_(False))
+            .first()
+        )
         if template:
             matched_templates.append(template)
         else:
             unmatched_names.append(name)
 
-    pending_templates = [t for t in matched_templates if not _has_active_consent(db, patient.id, t.id)]
+    general_templates = db.query(ConsentTemplate).filter(ConsentTemplate.is_general.is_(True)).all()
+    pending_templates = [
+        t for t in (general_templates + matched_templates) if not _has_active_consent(db, patient.id, t.id)
+    ]
+    needs_clinical_history = (
+        db.query(ClinicalHistory).filter(ClinicalHistory.patient_id == patient.id).first() is None
+    )
 
-    if not matched_templates:
-        consent_result = "no_matching_template"
-    elif not pending_templates:
+    if not pending_templates and not needs_clinical_history:
         consent_result = "already_sent"
     elif not payload.patient.phone and not payload.patient.email:
         consent_result = "no_contact_info"
@@ -129,6 +137,8 @@ def process_flowww_event(db: Session, payload: FlowwwEventPayload) -> dict:
                     package_id=package.id,
                 )
             )
+        if needs_clinical_history:
+            db.add(ClinicalHistory(patient_id=patient.id, package_id=package.id))
         db.commit()
         db.refresh(package)
 
@@ -137,7 +147,12 @@ def process_flowww_event(db: Session, payload: FlowwwEventPayload) -> dict:
 
         package.status = "sent"
         package.sent_at = datetime.utcnow()
-        consent_result = f"sent ({len(pending_templates)} documento(s))"
+        parts = []
+        if pending_templates:
+            parts.append(f"{len(pending_templates)} documento(s)")
+        if needs_clinical_history:
+            parts.append("historia clínica")
+        consent_result = "sent (" + " + ".join(parts) + ")"
 
     db.commit()
     return {

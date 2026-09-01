@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from fastapi import Depends, FastAPI, Form, Request
@@ -8,8 +9,9 @@ from sqlalchemy.orm import Session
 
 from app import config, notifications, pdf
 from app.auth import require_admin
+from app.clinical_history_fields import DISEASES
 from app.database import Base, SessionLocal, engine, get_db
-from app.models import ConsentPackage, ConsentRequest, ConsentTemplate, Patient
+from app.models import ClinicalHistory, ConsentPackage, ConsentRequest, ConsentTemplate, Patient
 from app.scheduler import start_scheduler
 from app.webhooks import router as webhooks_router
 
@@ -21,25 +23,78 @@ templates = Jinja2Templates(directory=str(config.BASE_DIR / "app" / "templates")
 app.mount("/static", StaticFiles(directory=str(config.BASE_DIR / "app" / "static")), name="static")
 
 SEED_TEMPLATES = [
-    (
-        "Depilación láser",
-        "PLACEHOLDER - Este texto debe ser sustituido por el consentimiento informado "
-        "real revisado por el equipo médico/legal de la clínica.\n\n"
-        "Declaro haber sido informada sobre el procedimiento de depilación láser, "
-        "sus beneficios esperados, los riesgos (irritación, quemaduras, cambios de "
-        "pigmentación, entre otros) y las alternativas disponibles. He podido resolver "
-        "mis dudas con el profesional y acepto someterme al tratamiento de forma voluntaria.",
-    ),
-    (
-        "Peeling químico",
-        "PLACEHOLDER - Este texto debe ser sustituido por el consentimiento informado "
-        "real revisado por el equipo médico/legal de la clínica.\n\n"
-        "Declaro haber sido informada sobre el procedimiento de peeling químico, "
-        "sus beneficios esperados, los riesgos (enrojecimiento, descamación, "
-        "hiperpigmentación, entre otros) y las alternativas disponibles. He podido "
-        "resolver mis dudas con el profesional y acepto someterme al tratamiento de "
-        "forma voluntaria.",
-    ),
+    {
+        "treatment_name": "Depilación láser",
+        "is_general": False,
+        "body_text": (
+            "PLACEHOLDER - Este texto debe ser sustituido por el consentimiento informado "
+            "real revisado por el equipo médico/legal de la clínica.\n\n"
+            "Declaro haber sido informada sobre el procedimiento de depilación láser, "
+            "sus beneficios esperados, los riesgos (irritación, quemaduras, cambios de "
+            "pigmentación, entre otros) y las alternativas disponibles. He podido resolver "
+            "mis dudas con el profesional y acepto someterme al tratamiento de forma voluntaria."
+        ),
+    },
+    {
+        "treatment_name": "Peeling químico",
+        "is_general": False,
+        "body_text": (
+            "PLACEHOLDER - Este texto debe ser sustituido por el consentimiento informado "
+            "real revisado por el equipo médico/legal de la clínica.\n\n"
+            "Declaro haber sido informada sobre el procedimiento de peeling químico, "
+            "sus beneficios esperados, los riesgos (enrojecimiento, descamación, "
+            "hiperpigmentación, entre otros) y las alternativas disponibles. He podido "
+            "resolver mis dudas con el profesional y acepto someterme al tratamiento de "
+            "forma voluntaria."
+        ),
+    },
+    {
+        "treatment_name": "Protección de Datos",
+        "is_general": True,
+        "body_text": (
+            "Clínica Corpus Dermis, Calle Lope de Vega 2, 28223, Pozuelo de Alarcón\n\n"
+            "En aras a dar cumplimiento al Reglamento (UE) 2016/679 del Parlamento Europeo y del "
+            "Consejo, de 27 de abril de 2016 y siguiendo las Recomendaciones emitidas por la Agencia "
+            "Española de Protección de Datos, SE INFORMA:\n\n"
+            "- Los datos de carácter personal solicitados y facilitados por usted son incorporados a un "
+            "fichero de titularidad privada cuyo responsable y único destinatario es Clínica Corpus "
+            "Dermis, S.L. Solo serán solicitados aquellos datos estrictamente necesarios para prestar "
+            "adecuadamente el servicio sanitario, pudiendo ser necesario recoger datos de contacto de "
+            "terceros, tales como representantes legales, tutores, o personas a cargo designadas por los "
+            "mismos.\n\n"
+            "- Como profesionales de la sanidad, garantizamos que todos los datos recogidos cuentan con "
+            "el compromiso de confidencialidad y cumplen con las medidas de seguridad establecidas "
+            "legalmente. Bajo ningún concepto dichos datos serán cedidos o tratados por terceras "
+            "personas -físicas o jurídicas- sin el previo consentimiento del paciente, tutor o "
+            "representante legal, salvo en aquellos casos en los que fuere imprescindible para la "
+            "correcta prestación del servicio.\n\n"
+            "- Una vez finalizada la relación entre la empresa y el paciente, los datos serán archivados "
+            "y conservados durante un periodo de tiempo mínimo de 5 años desde la última visita, tras lo "
+            "cual, seguirán archivados o en su defecto serán devueltos íntegramente al paciente o "
+            "autorizado legal. Los datos personales facilitados podrán ser cedidos por Clínica Corpus "
+            "Dermis, S.L. a las entidades que prestan servicios a la misma.\n\n"
+            "- Los datos facilitados serán incluidos en el fichero denominado Historia Clínica de "
+            "Clínica Corpus Dermis, S.L., con la finalidad de gestionar el tratamiento médico, emitir "
+            "facturas, gestiones relacionadas con el paciente, contacto, manifiestos de consentimiento, "
+            "etc.\n\n"
+            "- Puede ejercitar los derechos de acceso, rectificación, cancelación, limitación, "
+            "oposición y portabilidad, indicándolo por escrito a Clínica Corpus Dermis, S.L., con "
+            "domicilio en: Avenida Lope De Vega 2, Local 2, Bloque 3, C.P. 28223 - Pozuelo De Alarcón "
+            "(Madrid).\n\n"
+            "Al firmar este documento, declaro que:\n"
+            "- He sido informada de que mis datos serán incluidos en el fichero denominado Clientes de "
+            "Clínica Corpus Dermis, S.L., con la finalidad de gestión del tratamiento asignado, emisión "
+            "de facturas y contacto, y manifiesto mi consentimiento.\n"
+            "- Consiento que mis datos personales sean cedidos por Clínica Corpus Dermis, S.L. a las "
+            "entidades que prestan servicios a la misma en materia administrativa, contable y fiscal.\n"
+            "- Autorizo que se realicen comunicaciones a través de sistemas de mensajería instantánea "
+            "como WhatsApp y/o SMS con la finalidad de agilizar la gestión de los servicios "
+            "contratados.\n"
+            "- Acepto y solicito expresamente la recepción de comunicaciones comerciales por vía "
+            "electrónica (e-mail, WhatsApp, SMS) por parte de Clínica Corpus Dermis, S.L. (NIF: "
+            "B86328945), sobre promociones y novedades de sus productos y servicios."
+        ),
+    },
 ]
 
 
@@ -48,8 +103,8 @@ def seed_templates():
     db = SessionLocal()
     try:
         if db.query(ConsentTemplate).count() == 0:
-            for name, text in SEED_TEMPLATES:
-                db.add(ConsentTemplate(treatment_name=name, body_text=text))
+            for item in SEED_TEMPLATES:
+                db.add(ConsentTemplate(**item))
             db.commit()
     finally:
         db.close()
@@ -78,7 +133,8 @@ def root():
 @app.get("/admin")
 def admin_list(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     requests_ = db.query(ConsentRequest).order_by(ConsentRequest.created_at.desc()).all()
-    return templates.TemplateResponse(request, "admin_list.html", {"requests": requests_})
+    histories = db.query(ClinicalHistory).order_by(ClinicalHistory.created_at.desc()).all()
+    return templates.TemplateResponse(request, "admin_list.html", {"requests": requests_, "histories": histories})
 
 
 @app.get("/admin/new")
@@ -124,6 +180,14 @@ def admin_download(request_id: int, db: Session = Depends(get_db), _: str = Depe
     return FileResponse(config.BASE_DIR / consent_request.pdf_path, filename=f"consentimiento_{request_id}.pdf")
 
 
+@app.get("/admin/download/history/{history_id}")
+def admin_download_history(history_id: int, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    history = db.query(ClinicalHistory).get(history_id)
+    if not history or not history.pdf_path:
+        return RedirectResponse("/admin")
+    return FileResponse(config.BASE_DIR / history.pdf_path, filename=f"historia_clinica_{history_id}.pdf")
+
+
 @app.get("/admin/templates")
 def templates_list(
     request: Request, error: str = "", db: Session = Depends(get_db), _: str = Depends(require_admin)
@@ -146,10 +210,11 @@ def template_new_form(request: Request, _: str = Depends(require_admin)):
 def template_new_submit(
     treatment_name: str = Form(...),
     body_text: str = Form(...),
+    is_general: bool = Form(False),
     db: Session = Depends(get_db),
     _: str = Depends(require_admin),
 ):
-    db.add(ConsentTemplate(treatment_name=treatment_name.strip(), body_text=body_text))
+    db.add(ConsentTemplate(treatment_name=treatment_name.strip(), body_text=body_text, is_general=is_general))
     db.commit()
     return RedirectResponse("/admin/templates", status_code=303)
 
@@ -169,6 +234,7 @@ def template_edit_submit(
     template_id: int,
     treatment_name: str = Form(...),
     body_text: str = Form(...),
+    is_general: bool = Form(False),
     db: Session = Depends(get_db),
     _: str = Depends(require_admin),
 ):
@@ -176,6 +242,7 @@ def template_edit_submit(
     if template:
         template.treatment_name = treatment_name.strip()
         template.body_text = body_text
+        template.is_general = is_general
         db.commit()
     return RedirectResponse("/admin/templates", status_code=303)
 
@@ -219,13 +286,18 @@ def sign_form(token: str, request: Request, db: Session = Depends(get_db)):
             return templates.TemplateResponse(
                 request, "expired.html", {"message": "Este enlace ha expirado. Pide a la clínica que te envíe uno nuevo."}
             )
-        if all(item.status == "signed" for item in package.items):
+        history_done = not package.clinical_history or package.clinical_history.status == "signed"
+        if all(item.status == "signed" for item in package.items) and history_done:
             if package.status != "signed":
                 package.status = "signed"
                 package.completed_at = datetime.utcnow()
                 db.commit()
             return templates.TemplateResponse(request, "package_confirmation.html", {"package": package})
-        return templates.TemplateResponse(request, "package_overview.html", {"package": package, "items": package.items})
+        return templates.TemplateResponse(
+            request,
+            "package_overview.html",
+            {"package": package, "items": package.items, "history": package.clinical_history},
+        )
 
     consent_request = db.query(ConsentRequest).filter(ConsentRequest.token == token).first()
     if not consent_request:
@@ -296,4 +368,85 @@ def sign_package_item_submit(
         return RedirectResponse(f"/sign/{token}")
 
     _save_signature(db, item, request, signer_name, signature_data)
+    return RedirectResponse(f"/sign/{token}")
+
+
+@app.get("/sign/{token}/history/{history_id}")
+def clinical_history_form(token: str, history_id: int, request: Request, db: Session = Depends(get_db)):
+    package = db.query(ConsentPackage).filter(ConsentPackage.token == token).first()
+    if not package or not package.clinical_history or package.clinical_history.id != history_id:
+        return templates.TemplateResponse(request, "expired.html", {"message": "Este formulario no existe."})
+    history = package.clinical_history
+    if history.status == "signed":
+        return RedirectResponse(f"/sign/{token}")
+
+    return templates.TemplateResponse(
+        request,
+        "historia_clinica_form.html",
+        {
+            "patient": package.patient,
+            "diseases": DISEASES,
+            "sign_action_url": f"/sign/{token}/history/{history_id}",
+            "progress_label": None,
+        },
+    )
+
+
+@app.post("/sign/{token}/history/{history_id}")
+async def clinical_history_submit(token: str, history_id: int, request: Request, db: Session = Depends(get_db)):
+    package = db.query(ConsentPackage).filter(ConsentPackage.token == token).first()
+    if not package or not package.clinical_history or package.clinical_history.id != history_id:
+        return RedirectResponse(f"/sign/{token}")
+    history = package.clinical_history
+    if history.status == "signed":
+        return RedirectResponse(f"/sign/{token}")
+
+    form = await request.form()
+    disease_answers = {key: form.get(f"disease_{key}", "no") for key, _label in DISEASES}
+    answers = {
+        "apellidos": form.get("apellidos", ""),
+        "nombres": form.get("nombres", ""),
+        "dni": form.get("dni", ""),
+        "fecha_nacimiento": form.get("fecha_nacimiento", ""),
+        "direccion": form.get("direccion", ""),
+        "codigo_postal": form.get("codigo_postal", ""),
+        "localidad": form.get("localidad", ""),
+        "telefono": form.get("telefono", ""),
+        "motivo_consulta": form.get("motivo_consulta", ""),
+        "tratamiento_previo": form.get("tratamiento_previo", "no"),
+        "tratamiento_previo_cuales": form.get("tratamiento_previo_cuales", ""),
+        "cirugia_previa": form.get("cirugia_previa", "no"),
+        "cirugia_previa_detalle": form.get("cirugia_previa_detalle", ""),
+        "embarazada": form.get("embarazada", "no"),
+        "amamantando": form.get("amamantando", "no"),
+        "alergias": form.get("alergias", "no"),
+        "alergias_detalle": form.get("alergias_detalle", ""),
+        "enfermedad_importante": form.get("enfermedad_importante", "no"),
+        "enfermedad_importante_detalle": form.get("enfermedad_importante_detalle", ""),
+        "medicacion_habitual": form.get("medicacion_habitual", ""),
+        "diseases": disease_answers,
+        "alcohol": form.get("alcohol", "no"),
+        "alcohol_cuantas": form.get("alcohol_cuantas", ""),
+        "fuma": form.get("fuma", "no"),
+        "fuma_cuantos": form.get("fuma_cuantos", ""),
+        "notas_adicionales": form.get("notas_adicionales", ""),
+        "como_conocio": form.get("como_conocio", ""),
+        "referencia_de": form.get("referencia_de", ""),
+    }
+
+    history.answers_json = json.dumps(answers, ensure_ascii=False)
+    history.signer_name = form.get("signer_name", "")
+    history.signature_data = form.get("signature_data", "")
+    history.signer_ip = request.client.host if request.client else None
+    history.signer_user_agent = request.headers.get("user-agent", "")
+    history.submitted_at = datetime.utcnow()
+    history.status = "signed"
+    db.commit()
+    db.refresh(history)
+
+    pdf_path, doc_hash = pdf.build_clinical_history_pdf(history, package.patient)
+    history.pdf_path = pdf_path
+    history.doc_hash = doc_hash
+    db.commit()
+
     return RedirectResponse(f"/sign/{token}")

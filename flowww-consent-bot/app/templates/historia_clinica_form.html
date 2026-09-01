@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Historia clínica{% endblock %}
+{% block content %}
+  <style>
+    .yn { display: flex; gap: 16px; align-items: center; margin-top: 4px; }
+    .yn label { font-weight: normal; display: inline-flex; align-items: center; gap: 4px; }
+    fieldset { border: 1px solid #e5dbe9; border-radius: 8px; padding: 12px 16px; margin-top: 16px; }
+    legend { font-weight: 600; padding: 0 6px; }
+    .disease-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+  </style>
+
+  <h1>Historia clínica</h1>
+  {% if progress_label %}<p><em>{{ progress_label }}</em></p>{% endif %}
+  <p>Por su seguridad, responda con la mayor atención y sinceridad. Como profesionales médicos, la ley nos obliga a preservar la confidencialidad de esta información.</p>
+
+  <form class="stack" method="post" action="{{ sign_action_url }}" id="history-form">
+    <fieldset>
+      <legend>Datos personales</legend>
+      <label>Apellidos</label>
+      <input type="text" name="apellidos" required value="{{ patient.full_name.split(' ')[-1] if patient else '' }}">
+      <label>Nombres</label>
+      <input type="text" name="nombres" required>
+      <label>DNI / NIE / Pasaporte</label>
+      <input type="text" name="dni" required>
+      <label>Fecha de nacimiento</label>
+      <input type="date" name="fecha_nacimiento">
+      <label>Dirección</label>
+      <input type="text" name="direccion">
+      <label>Código postal</label>
+      <input type="text" name="codigo_postal">
+      <label>Localidad</label>
+      <input type="text" name="localidad">
+      <label>Teléfono de contacto</label>
+      <input type="text" name="telefono" value="{{ patient.phone if patient else '' }}">
+    </fieldset>
+
+    <fieldset>
+      <legend>Cuestionario médico</legend>
+
+      <label>¿Cuál es el motivo de su consulta?</label>
+      <textarea name="motivo_consulta" rows="2"></textarea>
+
+      <label>¿Ha realizado algún tratamiento de medicina estética/estética/cirugía plástica?</label>
+      <div class="yn">
+        <label><input type="radio" name="tratamiento_previo" value="si"> Sí</label>
+        <label><input type="radio" name="tratamiento_previo" value="no" checked> No</label>
+      </div>
+      <input type="text" name="tratamiento_previo_cuales" placeholder="¿Cuáles?">
+
+      <label>¿Ha sido intervenido/a quirúrgicamente?</label>
+      <div class="yn">
+        <label><input type="radio" name="cirugia_previa" value="si"> Sí</label>
+        <label><input type="radio" name="cirugia_previa" value="no" checked> No</label>
+      </div>
+      <input type="text" name="cirugia_previa_detalle" placeholder="Motivo y fecha aproximada">
+
+      <label>¿Cree que puede estar embarazada?</label>
+      <div class="yn">
+        <label><input type="radio" name="embarazada" value="si"> Sí</label>
+        <label><input type="radio" name="embarazada" value="no" checked> No</label>
+      </div>
+
+      <label>¿Está amamantando a un bebé en este momento?</label>
+      <div class="yn">
+        <label><input type="radio" name="amamantando" value="si"> Sí</label>
+        <label><input type="radio" name="amamantando" value="no" checked> No</label>
+      </div>
+
+      <label>¿Padece alergias (medicamentos, anestésicos, contacto, ambientales, cosméticos, alimentos)?</label>
+      <div class="yn">
+        <label><input type="radio" name="alergias" value="si"> Sí</label>
+        <label><input type="radio" name="alergias" value="no" checked> No</label>
+      </div>
+      <input type="text" name="alergias_detalle" placeholder="Indíquelas">
+
+      <label>¿Ha padecido o padece alguna enfermedad importante?</label>
+      <div class="yn">
+        <label><input type="radio" name="enfermedad_importante" value="si"> Sí</label>
+        <label><input type="radio" name="enfermedad_importante" value="no" checked> No</label>
+      </div>
+      <input type="text" name="enfermedad_importante_detalle" placeholder="Cítelas y fecha aproximada de inicio">
+
+      <label>¿Toma alguna medicación de forma habitual (incluso plantas o remedios naturales)?</label>
+      <textarea name="medicacion_habitual" rows="2" placeholder="Cítelas y el motivo"></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>¿Ha padecido o padece alguna de las siguientes condiciones?</legend>
+      <div class="disease-grid">
+        {% for key, label in diseases %}
+        <span>{{ label }}</span>
+        <div class="yn">
+          <label><input type="radio" name="disease_{{ key }}" value="si"> Sí</label>
+          <label><input type="radio" name="disease_{{ key }}" value="no" checked> No</label>
+        </div>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Hábitos</legend>
+      <label>¿Bebe vino, cerveza u otro tipo de alcohol?</label>
+      <div class="yn">
+        <label><input type="radio" name="alcohol" value="si"> Sí</label>
+        <label><input type="radio" name="alcohol" value="no" checked> No</label>
+      </div>
+      <input type="text" name="alcohol_cuantas" placeholder="¿Cuántas al día?">
+
+      <label>¿Fuma?</label>
+      <div class="yn">
+        <label><input type="radio" name="fuma" value="si"> Sí</label>
+        <label><input type="radio" name="fuma" value="no" checked> No</label>
+      </div>
+      <input type="text" name="fuma_cuantos" placeholder="¿Cuántos cigarrillos al día y desde cuándo?">
+
+      <label>¿Hay algo más sobre su salud que le parezca importante destacar?</label>
+      <textarea name="notas_adicionales" rows="2"></textarea>
+
+      <label>¿Cómo nos ha conocido?</label>
+      <select name="como_conocio">
+        <option value="internet">Internet</option>
+        <option value="publicidad">Publicidad</option>
+        <option value="revista">Revista</option>
+        <option value="referencia">Por referencia</option>
+      </select>
+      <input type="text" name="referencia_de" placeholder="Referencia de (si aplica)">
+    </fieldset>
+
+    <label>Nombre completo (como firma)</label>
+    <input type="text" name="signer_name" required value="{{ patient.full_name if patient else '' }}">
+
+    <label>Firma</label>
+    <canvas id="signature-pad" width="600" height="180"></canvas>
+    <p><a href="#" id="clear-signature">Borrar y firmar de nuevo</a></p>
+    <input type="hidden" name="signature_data" id="signature_data" required>
+
+    <p style="margin-top:20px;">
+      <button class="btn" type="submit">Guardar y firmar</button>
+    </p>
+  </form>
+
+  <script>
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#2c2530';
+    let drawing = false;
+
+    function pos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    }
+
+    function start(e) { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+    function move(e) { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
+    function end() { drawing = false; }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start);
+    canvas.addEventListener('touchmove', move);
+    canvas.addEventListener('touchend', end);
+
+    document.getElementById('clear-signature').addEventListener('click', (e) => {
+      e.preventDefault();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    document.getElementById('history-form').addEventListener('submit', (e) => {
+      const blank = document.createElement('canvas');
+      blank.width = canvas.width; blank.height = canvas.height;
+      if (canvas.toDataURL() === blank.toDataURL()) {
+        alert('Por favor firma antes de continuar.');
+        e.preventDefault();
+        return;
+      }
+      document.getElementById('signature_data').value = canvas.toDataURL('image/png');
+    });
+  </script>
+{% endblock %}
