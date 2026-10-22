@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparador de tiendas</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #181b22;
+    --text: #f2f3f5;
+    --muted: #9aa0ab;
+    --accent: #ff4747;
+    --border: #2a2e37;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 12px 0 4px;
+    text-align: center;
+  }
+  p.subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    text-align: center;
+    margin: 0 0 24px;
+    max-width: 420px;
+  }
+  form {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    gap: 8px;
+  }
+  input[type="text"] {
+    flex: 1;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 1rem;
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  button.search-btn {
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.search-btn:active { opacity: 0.85; }
+
+  .stores {
+    width: 100%;
+    max-width: 480px;
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .store-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .store-card.disabled {
+    opacity: 0.45;
+  }
+  .store-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+  .store-hint {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-top: 2px;
+  }
+  .go-btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .go-btn:hover { border-color: var(--accent); }
+
+  .recent {
+    width: 100%;
+    max-width: 480px;
+    margin-top: 28px;
+  }
+  .recent h2 {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .recent-chip {
+    display: inline-block;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    margin: 0 6px 6px 0;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .footer-note {
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-align: center;
+    max-width: 420px;
+    margin-top: 32px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>🔎 Comparador de tiendas</h1>
+  <p class="subtitle">Buscá una vez, abrí el resultado en cada tienda y compará vos mismo el precio.</p>
+
+  <form id="searchForm">
+    <input type="text" id="query" placeholder="¿Qué estás buscando?" autocomplete="off" required>
+    <button type="submit" class="search-btn">Buscar</button>
+  </form>
+
+  <div class="stores" id="stores"></div>
+
+  <div class="recent" id="recentWrap" style="display:none;">
+    <h2>Búsquedas recientes</h2>
+    <div id="recentChips"></div>
+  </div>
+
+  <p class="footer-note">No compara precios automáticamente: abre la misma búsqueda en cada tienda para que lo veas vos mismo. Ninguna de estas tiendas te deja comparar precio sin entrar a cada app por separado — esto te ahorra ese paso.</p>
+
+<script>
+  const STORES = [
+    {
+      name: "AliExpress",
+      hint: "Catálogo más grande, envíos variados",
+      url: (q) => `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(q)}`
+    },
+    {
+      name: "Temu",
+      hint: "Precios muy bajos, envío más lento",
+      url: (q) => `https://www.temu.com/search_result.html?search_key=${encodeURIComponent(q)}`
+    },
+    {
+      name: "Shein",
+      hint: "Ropa, moda y accesorios",
+      url: (q) => `https://www.shein.com/pdsearch/${encodeURIComponent(q)}/`
+    }
+  ];
+
+  const storesEl = document.getElementById("stores");
+  const formEl = document.getElementById("searchForm");
+  const queryEl = document.getElementById("query");
+  const recentWrap = document.getElementById("recentWrap");
+  const recentChips = document.getElementById("recentChips");
+
+  function renderStores(query) {
+    storesEl.innerHTML = "";
+    STORES.forEach(store => {
+      const card = document.createElement("div");
+      card.className = "store-card" + (query ? "" : " disabled");
+
+      const left = document.createElement("div");
+      left.innerHTML = `<div class="store-name">${store.name}</div><div class="store-hint">${store.hint}</div>`;
+
+      const btn = document.createElement("button");
+      btn.className = "go-btn";
+      btn.textContent = query ? "Abrir →" : "Esperando búsqueda";
+      btn.disabled = !query;
+      btn.onclick = () => window.open(store.url(query), "_blank", "noopener");
+
+      card.appendChild(left);
+      card.appendChild(btn);
+      storesEl.appendChild(card);
+    });
+  }
+
+  function getRecent() {
+    try {
+      return JSON.parse(localStorage.getItem("comparador_recent") || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveRecent(query) {
+    try {
+      let recent = getRecent().filter(q => q.toLowerCase() !== query.toLowerCase());
+      recent.unshift(query);
+      recent = recent.slice(0, 6);
+      localStorage.setItem("comparador_recent", JSON.stringify(recent));
+      renderRecent();
+    } catch (e) { /* localStorage puede fallar en modo privado, no pasa nada */ }
+  }
+
+  function renderRecent() {
+    const recent = getRecent();
+    if (recent.length === 0) {
+      recentWrap.style.display = "none";
+      return;
+    }
+    recentWrap.style.display = "block";
+    recentChips.innerHTML = "";
+    recent.forEach(q => {
+      const chip = document.createElement("span");
+      chip.className = "recent-chip";
+      chip.textContent = q;
+      chip.onclick = () => {
+        queryEl.value = q;
+        runSearch(q);
+      };
+      recentChips.appendChild(chip);
+    });
+  }
+
+  function runSearch(query) {
+    query = query.trim();
+    if (!query) return;
+    renderStores(query);
+    saveRecent(query);
+    STORES.forEach(store => window.open(store.url(query), "_blank", "noopener"));
+  }
+
+  formEl.addEventListener("submit", (e) => {
+    e.preventDefault();
+    runSearch(queryEl.value);
+  });
+
+  renderStores("");
+  renderRecent();
+</script>
+
+</body>
+</html>
